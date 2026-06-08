@@ -21,7 +21,7 @@
             },
             "session_cookie": {
                 "title": "MyPolaris.ro",
-                "description": "Recommended: log in at https://my.polaris.ro in a browser, open DevTools \u2192 Application \u2192 Cookies, copy the value of ASP.NET_SessionId, and paste it below. Email is still required for the unique ID and entity naming.",
+                "description": "Recommended: sign in to the MyPolaris website in a browser, open the browser developer tools, find the Cookies section, copy the ASP.NET_SessionId value, and paste it below. Email is still required for the unique ID and entity naming.",
                 "data": {
                     "email": "Email (required)",
                     "session_cookie": "ASP.NET_SessionId cookie",

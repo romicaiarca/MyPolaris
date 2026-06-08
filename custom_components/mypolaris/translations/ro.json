@@ -21,7 +21,7 @@
       },
       "session_cookie": {
         "title": "MyPolaris.ro",
-        "description": "Recomandat: autentifica-te pe https://my.polaris.ro in browser, deschide DevTools -> Application -> Cookies, copiaza valoarea ASP.NET_SessionId si lipeste-o mai jos. Emailul ramane necesar pentru ID-ul unic si denumirea entitatilor.",
+        "description": "Recomandat: autentifica-te pe site-ul MyPolaris in browser, deschide uneltele pentru dezvoltatori, cauta sectiunea Cookies, copiaza valoarea ASP.NET_SessionId si lipeste-o mai jos. Emailul ramane necesar pentru ID-ul unic si denumirea entitatilor.",
         "data": {
           "email": "Email (obligatoriu)",
           "session_cookie": "Cookie ASP.NET_SessionId",

@@ -53,6 +53,72 @@ The integration currently supports two authentication modes:
 
 If the Polaris session expires, open the integration Options dialog and paste a fresh `ASP.NET_SessionId` cookie.
 
+### How to copy `ASP.NET_SessionId` from your browser
+
+For all browsers, start by logging in to your MyPolaris account and keeping the browser tab open on the site.
+
+You can paste either of these into the integration:
+
+- Only the cookie value, for example `l4ah0u4r5ddvt54eqx54cfru`
+- The full cookie pair, for example `ASP.NET_SessionId=l4ah0u4r5ddvt54eqx54cfru;`
+
+#### Google Chrome
+
+1. Open `my.polaris.ro` and sign in.
+2. Press `F12`, or right-click the page and choose `Inspect`.
+3. Open the `Application` tab.
+4. In the left sidebar, open `Storage` -> `Cookies`.
+5. Click the entry for `https://my.polaris.ro`.
+6. Find the row named `ASP.NET_SessionId`.
+7. Copy the `Value` column, or copy the full cookie if you prefer.
+8. Paste it into the MyPolaris integration in Home Assistant.
+
+#### Mozilla Firefox
+
+1. Open `my.polaris.ro` and sign in.
+2. Press `F12`, or right-click the page and choose `Inspect`.
+3. Open the `Storage` tab.
+4. In the left sidebar, open `Cookies`.
+5. Select `https://my.polaris.ro`.
+6. Find `ASP.NET_SessionId` in the cookie list.
+7. Copy the `Value` field.
+8. Paste it into the MyPolaris integration in Home Assistant.
+
+#### Opera
+
+1. Open `my.polaris.ro` and sign in.
+2. Press `Ctrl` + `Shift` + `I`, or right-click and choose `Inspect element`.
+3. Open the `Application` tab.
+4. In the left sidebar, open `Storage` -> `Cookies`.
+5. Select `https://my.polaris.ro`.
+6. Find `ASP.NET_SessionId`.
+7. Copy the `Value` column.
+8. Paste it into the MyPolaris integration in Home Assistant.
+
+#### Microsoft Edge
+
+1. Open `my.polaris.ro` and sign in.
+2. Press `F12`, or right-click the page and choose `Inspect`.
+3. Open the `Application` tab.
+4. In the left sidebar, open `Storage` -> `Cookies`.
+5. Select `https://my.polaris.ro`.
+6. Find `ASP.NET_SessionId`.
+7. Copy the `Value` field.
+8. Paste it into the MyPolaris integration in Home Assistant.
+
+#### Safari
+
+1. Open `my.polaris.ro` and sign in.
+2. If the developer tools menu is not visible, open `Safari` -> `Settings` -> `Advanced` and enable the web developer menu.
+3. Open `Develop` -> `Show Web Inspector`.
+4. Open the `Storage` tab.
+5. Open `Cookies`, then select `my.polaris.ro`.
+6. Find `ASP.NET_SessionId`.
+7. Copy the `Value` field.
+8. Paste it into the MyPolaris integration in Home Assistant.
+
+If you do not see the cookie immediately, refresh the MyPolaris page once and check again.
+
 ## Privacy and data handling
 
 - This integration is intended to be used only with your own MyPolaris account.

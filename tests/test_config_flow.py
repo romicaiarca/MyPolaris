@@ -1,6 +1,8 @@
 """Home Assistant config-flow tests for MyPolaris."""
 from __future__ import annotations
 
+from unittest.mock import AsyncMock, patch
+
 from homeassistant import config_entries
 from homeassistant.data_entry_flow import FlowResultType
 import pytest
@@ -20,6 +22,15 @@ from custom_components.mypolaris.const import (
 )
 
 pytestmark = pytest.mark.asyncio
+
+
+@pytest.fixture(autouse=True)
+def _mock_config_entry_setup():
+    with patch(
+        "custom_components.mypolaris.async_setup_entry",
+        new=AsyncMock(return_value=True),
+    ):
+        yield
 
 
 async def _select_auth_step(hass, next_step_id: str):
