@@ -1,0 +1,10 @@
+{
+  "domain": "mypolaris",
+  "name": "MyPolaris.ro",
+  "documentation": "https://github.com/romicaiarca/MyPolaris",
+  "issue_tracker": "https://github.com/romicaiarca/MyPolaris/issues",
+  "codeowners": ["@romicaiarca"],
+  "config_flow": true,
+  "iot_class": "cloud_polling",
+  "version": "2025.11.07"
+}
