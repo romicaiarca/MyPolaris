@@ -4,7 +4,7 @@
   "codeowners": ["@romicaiarca"],
   "config_flow": true,
   "documentation": "https://github.com/romicaiarca/MyPolaris",
-  "issue_tracker": "https://github.com/romicaiarca/MyPolaris/issues",
   "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/romicaiarca/MyPolaris/issues",
   "version": "2025.11.07"
 }
