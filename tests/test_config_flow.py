@@ -15,6 +15,7 @@ from custom_components.mypolaris.config_flow import (
 )
 from custom_components.mypolaris.const import (
     CONF_API_KEY,
+    CONF_AREA_ID,
     CONF_EMAIL,
     CONF_PASSWORD,
     CONF_SESSION_COOKIE,
@@ -151,3 +152,36 @@ async def test_options_flow_updates_interval_and_cookie(hass) -> None:
     assert updated["type"] == FlowResultType.CREATE_ENTRY
     assert updated["data"]["update_interval_minutes"] == 45
     assert updated["data"][CONF_SESSION_COOKIE] == "fresh-cookie"
+
+
+async def test_options_flow_renders_with_existing_area(hass) -> None:
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id="user@example.com",
+        data={
+            CONF_EMAIL: "user@example.com",
+            CONF_AUTH_METHOD: AUTH_METHOD_SESSION_COOKIE,
+            CONF_SESSION_COOKIE: "old-cookie",
+            CONF_AREA_ID: "focsani",
+        },
+        options={"update_interval_minutes": 30},
+    )
+    entry.add_to_hass(hass)
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+
+    assert result["type"] == FlowResultType.FORM
+
+    updated = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        {
+            "update_interval_minutes": 60,
+            CONF_SESSION_COOKIE: "fresh-cookie",
+            CONF_AREA_ID: "focsani",
+        },
+    )
+
+    assert updated["type"] == FlowResultType.CREATE_ENTRY
+    assert updated["data"]["update_interval_minutes"] == 60
+    assert updated["data"][CONF_SESSION_COOKIE] == "fresh-cookie"
+    assert updated["data"][CONF_AREA_ID] == "focsani"

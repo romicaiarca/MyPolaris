@@ -21,7 +21,7 @@
       },
       "session_cookie": {
         "title": "MyPolaris.ro",
-        "description": "Recommended: sign in to the MyPolaris website in a browser, open the browser developer tools, find the Cookies section, copy the ASP.NET_SessionId value, and paste it below. Email is still required for the unique ID and entity naming.",
+        "description": "Recommended: sign in to the MyPolaris website in a browser, open the browser developer tools, find the Cookies section, copy the ASP.NET_SessionId value, and paste it below. For multiple MyPolaris accounts, use a separate incognito/private window or browser profile for each account before copying the cookie. Email is still required for the unique ID and entity naming.",
         "data": {
           "email": "Email (required)",
           "session_cookie": "ASP.NET_SessionId cookie",
@@ -44,7 +44,7 @@
     "step": {
       "init": {
         "title": "MyPolaris - Settings",
-        "description": "If the MyPolaris session expires, paste a fresh ASP.NET_SessionId cookie here and save. You can keep the existing values for any fields you do not want to change.",
+        "description": "If the MyPolaris session expires, paste a fresh ASP.NET_SessionId cookie here and save. If you use cookie authentication for multiple accounts, collect each cookie from a separate incognito/private window or browser profile. You can keep the existing values for any fields you do not want to change.",
         "data": {
           "update_interval_minutes": "Update interval (minutes)",
           "api_key": "CapSolver API Key",

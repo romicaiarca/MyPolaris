@@ -21,7 +21,7 @@
       },
       "session_cookie": {
         "title": "MyPolaris.ro",
-        "description": "Recomandat: autentifica-te pe site-ul MyPolaris in browser, deschide uneltele pentru dezvoltatori, cauta sectiunea Cookies, copiaza valoarea ASP.NET_SessionId si lipeste-o mai jos. Emailul ramane necesar pentru ID-ul unic si denumirea entitatilor.",
+        "description": "Recomandat: autentifica-te pe site-ul MyPolaris in browser, deschide uneltele pentru dezvoltatori, cauta sectiunea Cookies, copiaza valoarea ASP.NET_SessionId si lipeste-o mai jos. Pentru mai multe conturi MyPolaris, foloseste pentru fiecare cont o fereastra incognito/privata separata sau un profil separat de browser inainte sa copiezi cookie-ul. Emailul ramane necesar pentru ID-ul unic si denumirea entitatilor.",
         "data": {
           "email": "Email (obligatoriu)",
           "session_cookie": "Cookie ASP.NET_SessionId",
@@ -44,7 +44,7 @@
     "step": {
       "init": {
         "title": "MyPolaris - Setari",
-        "description": "Daca sesiunea MyPolaris expira, lipeste aici un cookie ASP.NET_SessionId nou si salveaza. Poti lasa neschimbate valorile existente pentru campurile pe care nu vrei sa le modifici.",
+        "description": "Daca sesiunea MyPolaris expira, lipeste aici un cookie ASP.NET_SessionId nou si salveaza. Daca folosesti autentificarea prin cookie pentru mai multe conturi, obtine fiecare cookie dintr-o fereastra incognito/privata separata sau dintr-un profil separat de browser. Poti lasa neschimbate valorile existente pentru campurile pe care nu vrei sa le modifici.",
         "data": {
           "update_interval_minutes": "Interval de actualizare (minute)",
           "api_key": "Cheie API CapSolver",

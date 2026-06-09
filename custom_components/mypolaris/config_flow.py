@@ -175,14 +175,11 @@ class MyPolarisConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     @callback
     def async_get_options_flow(config_entry: config_entries.ConfigEntry):
         """Get the options flow."""
-        return MyPolarisOptionsFlow(config_entry)
+        return MyPolarisOptionsFlow()
 
 
 class MyPolarisOptionsFlow(config_entries.OptionsFlow):
     """Options flow for MyPolaris."""
-
-    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
-        self.config_entry = config_entry
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
@@ -191,36 +188,38 @@ class MyPolarisOptionsFlow(config_entries.OptionsFlow):
         if user_input is not None:
             return self.async_create_entry(title="", data=user_input)
 
-        current_interval = self.config_entry.options.get("update_interval_minutes", 30)
-        current_api_key = self.config_entry.options.get(
-            CONF_API_KEY, self.config_entry.data.get(CONF_API_KEY, "")
-        )
-        current_cookie = self.config_entry.options.get(
-            CONF_SESSION_COOKIE, self.config_entry.data.get(CONF_SESSION_COOKIE, "")
-        )
-        current_area = self.config_entry.options.get(
-            CONF_AREA_ID, self.config_entry.data.get(CONF_AREA_ID, "")
-        )
+        suggested_values: dict[str, Any] = {
+            "update_interval_minutes": self.config_entry.options.get(
+                "update_interval_minutes", 30
+            )
+        }
+        for option_key in (CONF_API_KEY, CONF_SESSION_COOKIE, CONF_AREA_ID):
+            value = self.config_entry.options.get(
+                option_key, self.config_entry.data.get(option_key)
+            )
+            if value not in (None, ""):
+                suggested_values[option_key] = value
 
         options_schema = vol.Schema(
             {
                 vol.Required(
                     "update_interval_minutes",
-                    default=current_interval,
+                    default=30,
                 ): vol.All(vol.Coerce(int), vol.Range(min=10, max=1440)),
-                vol.Optional(
-                    CONF_API_KEY,
-                    default=current_api_key,
-                ): TextSelector(TextSelectorConfig(type=TextSelectorType.PASSWORD)),
-                vol.Optional(
-                    CONF_SESSION_COOKIE,
-                    default=current_cookie,
-                ): TextSelector(TextSelectorConfig(type=TextSelectorType.PASSWORD)),
-                vol.Optional(
-                    CONF_AREA_ID,
-                    description={"suggested_value": current_area},
-                ): AreaSelector(),
+                vol.Optional(CONF_API_KEY): TextSelector(
+                    TextSelectorConfig(type=TextSelectorType.PASSWORD)
+                ),
+                vol.Optional(CONF_SESSION_COOKIE): TextSelector(
+                    TextSelectorConfig(type=TextSelectorType.PASSWORD)
+                ),
+                vol.Optional(CONF_AREA_ID): AreaSelector(),
             }
         )
 
-        return self.async_show_form(step_id="init", data_schema=options_schema)
+        return self.async_show_form(
+            step_id="init",
+            data_schema=self.add_suggested_values_to_schema(
+                options_schema,
+                suggested_values,
+            ),
+        )

@@ -53,6 +53,8 @@ The integration currently supports two authentication modes:
 
 If the Polaris session expires, open the integration Options dialog and paste a fresh `ASP.NET_SessionId` cookie.
 
+If you use browser-session cookies for multiple MyPolaris accounts, obtain each cookie from a separate incognito/private window or a separate browser profile. In testing, MyPolaris appears to bind the session to the current browser/device profile, so signing in with a different account in the same normal browser profile can replace the previous cookie.
+
 ### How to copy `ASP.NET_SessionId` from your browser
 
 For all browsers, start by logging in to your MyPolaris account and keeping the browser tab open on the site.
@@ -61,6 +63,10 @@ You can paste either of these into the integration:
 
 - Only the cookie value, for example `l4ah0u4r5ddvt54eqx54cfru`
 - The full cookie pair, for example `ASP.NET_SessionId=l4ah0u4r5ddvt54eqx54cfru;`
+
+Sanitized illustrative Chrome DevTools view:
+
+![Illustrative Chrome DevTools view showing Application -> Cookies -> https://my.polaris.ro and the ASP.NET_SessionId value](docs/images/chrome-cookie-devtools.svg)
 
 #### Google Chrome
 
