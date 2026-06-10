@@ -23,8 +23,10 @@ from .utils import (
 _LOGGER = logging.getLogger(__name__)
 
 BASE_URL = "https://my.polaris.ro"
+HOME_URL = f"{BASE_URL}/"
 LOGIN_URL = f"{BASE_URL}/Login.aspx"
 AUTH_URL = f"{BASE_URL}/Login.aspx/Autentificare"
+INIT_URL = f"{BASE_URL}/Default.aspx/Init"
 PDL_URL = f"{BASE_URL}/InvoicesAndPayments.aspx/LoadPuncteDeLucru"
 LOCATII_URL = f"{BASE_URL}/Contact.aspx/GetListaLocatii"
 SOLD_URL = f"{BASE_URL}/InvoicesAndPayments.aspx/LoadDataSold"
@@ -212,9 +214,12 @@ class MyPolarisCoordinator(DataUpdateCoordinator):
         payload: dict[str, Any],
         *,
         source: str = "refresh",
+        referer: str | None = None,
     ) -> dict[str, Any]:
         """POST JSON and parse the ASP.NET ``{"d": ...}`` envelope."""
         headers = {**BASE_HEADERS, "Content-Type": "application/json; charset=utf-8"}
+        if referer is not None:
+            headers["Referer"] = referer
         if self.session_cookie:
             headers["Cookie"] = self._cookie_header()
         async with self.session.post(
@@ -292,9 +297,10 @@ class MyPolarisCoordinator(DataUpdateCoordinator):
         """Send a lightweight authenticated request to keep the session warm."""
         try:
             keepalive_resp = await self._post_json(
-                LOCATII_URL,
-                {"tip": "0"},
+                INIT_URL,
+                {},
                 source="keepalive",
+                referer=HOME_URL,
             )
         except UpdateFailed as err:
             _LOGGER.debug("MyPolaris keepalive failed: %s", err)

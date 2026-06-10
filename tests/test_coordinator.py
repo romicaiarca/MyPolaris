@@ -2,10 +2,12 @@
 from __future__ import annotations
 
 from datetime import timedelta
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from custom_components.mypolaris.coordinator import (
     BASE_URL,
+    HOME_URL,
+    INIT_URL,
     KEEPALIVE_INTERVAL,
     MyPolarisCoordinator,
 )
@@ -66,6 +68,28 @@ def test_async_start_keepalive_skips_unneeded_cases(hass) -> None:
 
         mock_track.assert_not_called()
         assert coordinator._cancel_keepalive is None
+
+
+async def test_async_keepalive_uses_home_init_endpoint(hass) -> None:
+    coordinator = MyPolarisCoordinator(
+        hass,
+        "user@example.com",
+        "",
+        "",
+        timedelta(minutes=30),
+        MagicMock(),
+        session_cookie="abc123",
+    )
+    coordinator._post_json = AsyncMock(return_value={"d": {"EsteOK": True}})
+
+    await coordinator._async_keepalive(None)
+
+    coordinator._post_json.assert_awaited_once_with(
+        INIT_URL,
+        {},
+        source="keepalive",
+        referer=HOME_URL,
+    )
 
 
 def test_record_last_access_updates_state_and_listeners(hass) -> None:
