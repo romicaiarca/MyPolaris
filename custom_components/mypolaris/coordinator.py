@@ -1,15 +1,14 @@
-"""MyPolaris coordinator with hardened auth + CapSolver."""
+"""MyPolaris coordinator with hardened auth + NopeCHA."""
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import re
-import time
 from datetime import datetime, timedelta
 from typing import Any, Callable
 
 import aiohttp
-import requests
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
@@ -33,6 +32,11 @@ SOLD_URL = f"{BASE_URL}/InvoicesAndPayments.aspx/LoadDataSold"
 FACTURI_URL = f"{BASE_URL}/InvoicesAndPayments.aspx/LoadDataFacturi"
 PLATI_URL = f"{BASE_URL}/InvoicesAndPayments.aspx/LoadDataPlati"
 KEEPALIVE_INTERVAL = timedelta(seconds=100)
+NOPECHA_TOKEN_URL = "https://api.nopecha.com/token/"
+NOPECHA_INCOMPLETE_JOB_CODE = 14
+NOPECHA_UNAVAILABLE_FEATURE_CODE = 18
+NOPECHA_POLL_INTERVAL = 3
+NOPECHA_MAX_POLLS = 30
 
 USER_AGENT = (
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
@@ -55,46 +59,110 @@ SITEKEY_PATTERNS = (
 )
 
 
-def solve_recaptcha_sync(api_key: str, sitekey: str, url: str) -> str:
-    """Solve invisible reCAPTCHA v2 via CapSolver. Runs in executor."""
-    if not api_key.startswith("CAI-"):
-        raise UpdateFailed("Invalid CapSolver API key – must start with 'CAI-'")
+class MyPolarisSessionExpired(UpdateFailed):
+    """Raised when MyPolaris rejects the current ASP.NET session."""
 
+
+async def _read_nopecha_json(resp: aiohttp.ClientResponse) -> dict[str, Any]:
+    """Read a NopeCHA response body as JSON."""
+    text = await resp.text()
+    try:
+        data = json.loads(text) if text else {}
+    except ValueError as err:
+        raise UpdateFailed(
+            f"NopeCHA returned invalid JSON (HTTP {resp.status}): {text[:200]}"
+        ) from err
+    if not isinstance(data, dict):
+        raise UpdateFailed(f"NopeCHA returned an unexpected payload: {data!r}")
+    return data
+
+
+def _format_nopecha_error(prefix: str, status: int, data: dict[str, Any]) -> str:
+    """Format a NopeCHA error without leaking request details."""
+    message = data.get("message") or data.get("type") or data.get("error")
+    code = data.get("code") or data.get("error")
+    if status == 402 or code == NOPECHA_UNAVAILABLE_FEATURE_CODE:
+        return (
+            f"{prefix}: the NopeCHA reCAPTCHA v2 token API is unavailable for "
+            "this API key's current plan. MyPolaris email login needs token API "
+            "access to refresh the ASP.NET session. Use a NopeCHA key with "
+            "reCAPTCHA v2 token access, or switch this integration to browser "
+            "session cookie authentication."
+        )
+    if code is not None and message:
+        return f"{prefix}: {message} (HTTP {status}, code {code})"
+    if message:
+        return f"{prefix}: {message} (HTTP {status})"
+    return f"{prefix}: HTTP {status}, response={data!r}"
+
+
+async def solve_recaptcha_with_nopecha(
+    session: aiohttp.ClientSession,
+    api_key: str,
+    sitekey: str,
+    url: str,
+) -> str:
+    """Solve the MyPolaris reCAPTCHA v2 challenge via NopeCHA."""
+    api_key = (api_key or "").strip()
+    if not api_key:
+        raise UpdateFailed("NopeCHA API key is required.")
+
+    headers = {"Content-Type": "application/json"}
     payload = {
-        "clientKey": api_key,
-        "task": {
-            "type": "ReCaptchaV2TaskProxyless",
-            "websiteURL": url,
-            "websiteKey": sitekey,
-            "isInvisible": True,
-        },
+        "key": api_key,
+        "type": "recaptcha2",
+        "sitekey": sitekey,
+        "url": url,
+        "data": {"theme": "light"},
+        "enterprise": False,
+        "useragent": USER_AGENT,
     }
 
-    response = requests.post(
-        "https://api.capsolver.com/createTask", json=payload, timeout=30
-    )
-    result = response.json()
-    if result.get("errorId", 0) != 0:
-        raise UpdateFailed(f"CapSolver: {result.get('errorDescription')}")
+    async with session.post(
+        NOPECHA_TOKEN_URL,
+        json=payload,
+        headers=headers,
+    ) as resp:
+        data = await _read_nopecha_json(resp)
+        if resp.status >= 400:
+            raise UpdateFailed(
+                _format_nopecha_error("NopeCHA submit failed", resp.status, data)
+            )
 
-    task_id = result["taskId"]
-    _LOGGER.debug("CapSolver task created: %s", task_id)
+    job_id = data.get("data")
+    if not isinstance(job_id, str) or not job_id:
+        raise UpdateFailed(f"NopeCHA did not return a job ID: {data!r}")
+    _LOGGER.debug("NopeCHA reCAPTCHA job created: %s", job_id)
 
-    for attempt in range(20):
-        time.sleep(3)
-        resp = requests.post(
-            "https://api.capsolver.com/getTaskResult",
-            json={"clientKey": api_key, "taskId": task_id},
-            timeout=30,
-        )
-        data = resp.json()
-        if data.get("status") == "ready":
-            _LOGGER.debug("reCAPTCHA solved in ~%ss", 3 * (attempt + 1))
-            return data["solution"]["gRecaptchaResponse"]
-        if data.get("errorId", 0) != 0:
-            raise UpdateFailed(f"CapSolver: {data.get('errorDescription')}")
+    for attempt in range(NOPECHA_MAX_POLLS):
+        await asyncio.sleep(NOPECHA_POLL_INTERVAL)
+        async with session.get(
+            NOPECHA_TOKEN_URL,
+            params={"key": api_key, "id": job_id},
+            headers=headers,
+        ) as resp:
+            data = await _read_nopecha_json(resp)
+            if (
+                resp.status == 409
+                or data.get("code") == NOPECHA_INCOMPLETE_JOB_CODE
+                or data.get("error") == NOPECHA_INCOMPLETE_JOB_CODE
+            ):
+                continue
+            if resp.status >= 400:
+                raise UpdateFailed(
+                    _format_nopecha_error("NopeCHA result failed", resp.status, data)
+                )
 
-    raise UpdateFailed("CapSolver timeout – reCAPTCHA not solved in time")
+        token = data.get("data")
+        if isinstance(token, str) and token:
+            _LOGGER.debug(
+                "NopeCHA solved reCAPTCHA in ~%ss",
+                NOPECHA_POLL_INTERVAL * (attempt + 1),
+            )
+            return token
+        raise UpdateFailed(f"NopeCHA returned an unexpected result: {data!r}")
+
+    raise UpdateFailed("NopeCHA timeout - reCAPTCHA was not solved in time.")
 
 
 class MyPolarisCoordinator(DataUpdateCoordinator):
@@ -115,6 +183,7 @@ class MyPolarisCoordinator(DataUpdateCoordinator):
         self.api_key = api_key
         self.session = session
         self.session_cookie = (session_cookie or "").strip()
+        self._authenticated = bool(self.session_cookie)
         self.config_entry_id: str | None = None
         self._cancel_keepalive: Callable[[], None] | None = None
         self._access_listeners: list[Callable[[], None]] = []
@@ -128,8 +197,10 @@ class MyPolarisCoordinator(DataUpdateCoordinator):
         )
 
     def async_start_keepalive(self) -> None:
-        """Keep cookie-based sessions alive between coordinator refreshes."""
-        if self._cancel_keepalive is not None or not self.session_cookie:
+        """Keep authenticated sessions alive between coordinator refreshes."""
+        if self._cancel_keepalive is not None:
+            return
+        if not self.session_cookie and not self._authenticated:
             return
         if self.update_interval is not None and self.update_interval <= KEEPALIVE_INTERVAL:
             return
@@ -237,10 +308,14 @@ class MyPolarisCoordinator(DataUpdateCoordinator):
                 status=resp.status,
             )
             if resp.status in (302, 401, 403):
-                raise UpdateFailed(
-                    "MyPolaris session expired or unauthorized. "
-                    "If you are using session-cookie auth, paste a fresh "
-                    "ASP.NET_SessionId cookie from your browser."
+                raise MyPolarisSessionExpired(
+                    f"MyPolaris session expired or unauthorized (HTTP {resp.status})."
+                )
+            if "application/json" not in ctype and (
+                "Login.aspx" in text or "autentific" in text.lower()
+            ):
+                raise MyPolarisSessionExpired(
+                    "MyPolaris redirected the request to the login page."
                 )
             if resp.status >= 400 or "application/json" not in ctype:
                 raise UpdateFailed(
@@ -268,6 +343,74 @@ class MyPolarisCoordinator(DataUpdateCoordinator):
             if m:
                 return m.group(1)
         return None
+
+    def _can_auto_login(self) -> bool:
+        """Return whether the entry has enough data to refresh sessions."""
+        return bool(self.email and self.password and self.api_key)
+
+    async def _async_login(self) -> None:
+        """Create a fresh authenticated MyPolaris ASP.NET session."""
+        self._authenticated = False
+        if not self.password.strip():
+            raise UpdateFailed("MyPolaris password is required for email login.")
+        if not self.api_key.strip():
+            raise UpdateFailed("NopeCHA API key is required for email login.")
+
+        async with self.session.get(
+            LOGIN_URL,
+            headers={"User-Agent": USER_AGENT, "Accept": "text/html"},
+            allow_redirects=False,
+        ) as resp:
+            login_html = await resp.text()
+            self._record_last_access(
+                LOGIN_URL,
+                method="GET",
+                source="login",
+                status=resp.status,
+            )
+            if resp.status != 200:
+                raise UpdateFailed(f"Login.aspx returned HTTP {resp.status}")
+
+        sitekey = self._extract_sitekey(login_html)
+        if not sitekey:
+            raise UpdateFailed(
+                "Could not find reCAPTCHA sitekey on Login.aspx. "
+                "The page layout may have changed."
+            )
+
+        token = await solve_recaptcha_with_nopecha(
+            self.session,
+            self.api_key,
+            sitekey,
+            LOGIN_URL,
+        )
+
+        auth_payload = {
+            "Email": self.email,
+            "Parola": self.password,
+            "Cod": "",
+            "token": token,
+        }
+        auth_resp = await self._post_json(
+            AUTH_URL,
+            auth_payload,
+            source="login",
+        )
+        d = auth_resp.get("d") or {}
+        if d.get("Login2Steps"):
+            raise UpdateFailed(
+                "2FA is enabled on this MyPolaris account - not supported."
+            )
+        if not d.get("EsteOK"):
+            msg = (
+                d.get("MesajEroare")
+                or d.get("MesajCustom")
+                or d.get("Mesaj")
+                or "unknown error"
+            )
+            raise UpdateFailed(f"Login failed: {msg}")
+
+        self._authenticated = True
 
     @staticmethod
     def _parse_money(raw: Any) -> float | None:
@@ -302,6 +445,10 @@ class MyPolarisCoordinator(DataUpdateCoordinator):
                 source="keepalive",
                 referer=HOME_URL,
             )
+        except MyPolarisSessionExpired as err:
+            self._authenticated = False
+            _LOGGER.debug("MyPolaris keepalive found an expired session: %s", err)
+            return
         except UpdateFailed as err:
             _LOGGER.debug("MyPolaris keepalive failed: %s", err)
             return
@@ -413,125 +560,89 @@ class MyPolarisCoordinator(DataUpdateCoordinator):
             "years": sorted(set(facturi_by_year) | set(plati_by_year)),
         }
 
+    async def _async_fetch_authenticated_data(self) -> dict[str, Any]:
+        """Fetch all MyPolaris data using the current authenticated session."""
+        loc_resp = await self._post_json(LOCATII_URL, {"tip": "0"})
+        loc_d = loc_resp.get("d") or {}
+        if not loc_d.get("EsteOK"):
+            msg = (
+                loc_d.get("MesajEroare")
+                or loc_d.get("MesajCustom")
+                or loc_d.get("Mesaj")
+                or ""
+            )
+            _LOGGER.debug("GetListaLocatii raw payload: %s", loc_resp)
+            if (
+                not msg
+                or "autenti" in msg.lower()
+                or "login" in msg.lower()
+                or "sesi" in msg.lower()
+            ):
+                raise MyPolarisSessionExpired(
+                    f"GetListaLocatii failed because the session expired: "
+                    f"{msg or 'EsteOK=false'}"
+                )
+            raise UpdateFailed(f"GetListaLocatii failed: {msg or 'EsteOK=false'}.")
+        lista_raw = loc_d.get("lista") or []
+        if not lista_raw:
+            raise UpdateFailed("No locations returned by GetListaLocatii.")
+
+        locatii = [
+            {"id": str(loc.get("ID")), "denumire": loc.get("Denumire", "")}
+            for loc in lista_raw
+            if loc.get("ID") is not None
+        ]
+
+        # Fetch SOLD / FACTURI / PLATI for every location in parallel.
+        per_loc = await asyncio.gather(*(self._fetch_location(loc) for loc in locatii))
+        by_locatie: dict[str, dict[str, Any]] = {
+            loc["id"]: bucket for loc, bucket in zip(locatii, per_loc)
+        }
+
+        # Keep a "primary" pointer (first location) for any legacy
+        # consumers and for the integration-level device naming.
+        primary = locatii[0]
+        primary_bucket = by_locatie[primary["id"]]
+
+        return {
+            "locatii": locatii,
+            "by_locatie": by_locatie,
+            "primary_locatie_id": primary["id"],
+            "primary_locatie_denumire": primary["denumire"],
+            "ultima_actualizare": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            # Back-compat top-level mirrors (primary location).
+            "denumire": primary_bucket.get("denumire"),
+            "contract_date": primary_bucket.get("denumire"),
+            "sold_curent": primary_bucket.get("sold_curent"),
+            "sold_factura": primary_bucket.get("sold_factura"),
+            "pdl_id": primary["id"],
+            "locatie_id": primary["id"],
+            "locatie_denumire": primary["denumire"],
+        }
+
     async def _async_update_data(self) -> dict[str, Any]:
         try:
-            if not self.session_cookie:
-                # Fresh login via CapSolver + reCAPTCHA
-                async with self.session.get(
-                    LOGIN_URL,
-                    headers={"User-Agent": USER_AGENT, "Accept": "text/html"},
-                ) as resp:
-                    login_html = await resp.text()
-                    self._record_last_access(
-                        LOGIN_URL,
-                        method="GET",
-                        source="login",
-                        status=resp.status,
-                    )
-                    if resp.status != 200:
-                        raise UpdateFailed(f"Login.aspx returned HTTP {resp.status}")
+            if not self.session_cookie and not self._authenticated:
+                await self._async_login()
 
-                sitekey = self._extract_sitekey(login_html)
-                if not sitekey:
+            try:
+                return await self._async_fetch_authenticated_data()
+            except MyPolarisSessionExpired as err:
+                self._authenticated = False
+                if self.session_cookie:
                     raise UpdateFailed(
-                        "Could not find reCAPTCHA sitekey on Login.aspx. "
-                        "The page layout may have changed."
-                    )
-                token = await self.hass.async_add_executor_job(
-                    solve_recaptcha_sync, self.api_key, sitekey, LOGIN_URL
+                        "MyPolaris session expired. Paste a fresh "
+                        "ASP.NET_SessionId cookie from your browser, or "
+                        "configure email/password with a NopeCHA API key."
+                    ) from err
+                if not self._can_auto_login():
+                    raise
+
+                _LOGGER.info(
+                    "MyPolaris session expired; refreshing it with NopeCHA."
                 )
-
-                auth_payload = {
-                    "Email": self.email,
-                    "Parola": self.password,
-                    "Cod": "",
-                    "token": token,
-                }
-                auth_resp = await self._post_json(
-                    AUTH_URL,
-                    auth_payload,
-                    source="login",
-                )
-                d = auth_resp.get("d") or {}
-                if not d.get("EsteOK"):
-                    msg = (
-                        d.get("MesajEroare")
-                        or d.get("MesajCustom")
-                        or d.get("Mesaj")
-                        or "unknown error"
-                    )
-                    raise UpdateFailed(f"Login failed: {msg}")
-                if d.get("Login2Steps"):
-                    raise UpdateFailed(
-                        "2FA is enabled on this MyPolaris account – not supported."
-                    )
-
-            # From here on the rest works the same in both modes; in cookie
-            # mode the Cookie header is added by _post_json.
-            loc_resp = await self._post_json(LOCATII_URL, {"tip": "0"})
-            loc_d = loc_resp.get("d") or {}
-            if not loc_d.get("EsteOK"):
-                msg = (
-                    loc_d.get("MesajEroare")
-                    or loc_d.get("MesajCustom")
-                    or loc_d.get("Mesaj")
-                    or ""
-                )
-                _LOGGER.debug("GetListaLocatii raw payload: %s", loc_resp)
-                hint = ""
-                if self.session_cookie and (
-                    not msg
-                    or "autenti" in msg.lower()
-                    or "login" in msg.lower()
-                    or "sesi" in msg.lower()
-                ):
-                    hint = (
-                        " Likely the MyPolaris session cookie expired \u2013 "
-                        "open my.polaris.ro in a browser, copy the new "
-                        "ASP.NET_SessionId value and update it in the "
-                        "integration options."
-                    )
-                raise UpdateFailed(
-                    f"GetListaLocatii failed: {msg or 'EsteOK=false'}.{hint}"
-                )
-            lista_raw = loc_d.get("lista") or []
-            if not lista_raw:
-                raise UpdateFailed("No locations returned by GetListaLocatii.")
-
-            locatii = [
-                {"id": str(loc.get("ID")), "denumire": loc.get("Denumire", "")}
-                for loc in lista_raw
-                if loc.get("ID") is not None
-            ]
-
-            # Fetch SOLD / FACTURI / PLATI for every location in parallel.
-            per_loc = await asyncio.gather(
-                *(self._fetch_location(loc) for loc in locatii)
-            )
-            by_locatie: dict[str, dict[str, Any]] = {
-                loc["id"]: bucket for loc, bucket in zip(locatii, per_loc)
-            }
-
-            # Keep a "primary" pointer (first location) for any legacy
-            # consumers and for the integration-level device naming.
-            primary = locatii[0]
-            primary_bucket = by_locatie[primary["id"]]
-
-            return {
-                "locatii": locatii,
-                "by_locatie": by_locatie,
-                "primary_locatie_id": primary["id"],
-                "primary_locatie_denumire": primary["denumire"],
-                "ultima_actualizare": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                # Back-compat top-level mirrors (primary location).
-                "denumire": primary_bucket.get("denumire"),
-                "contract_date": primary_bucket.get("denumire"),
-                "sold_curent": primary_bucket.get("sold_curent"),
-                "sold_factura": primary_bucket.get("sold_factura"),
-                "pdl_id": primary["id"],
-                "locatie_id": primary["id"],
-                "locatie_denumire": primary["denumire"],
-            }
+                await self._async_login()
+                return await self._async_fetch_authenticated_data()
 
         except UpdateFailed:
             raise

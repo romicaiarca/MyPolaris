@@ -12,8 +12,8 @@ CONF_AREA_ID: Final = "area_id"
 CONF_SESSION_COOKIE: Final = "session_cookie"
 CONF_LOCATIE_ID: Final = "locatie_id"
 
-# Personal CapSolver client key baked in for single-user installs.
-# Paste your `CAI-...` key between the quotes. Leave empty to require the
+# Personal NopeCHA API key baked in for single-user installs.
+# Paste your NopeCHA key between the quotes. Leave empty to require the
 # user to provide their own in the config flow.
 DEFAULT_API_KEY: Final = ""
 

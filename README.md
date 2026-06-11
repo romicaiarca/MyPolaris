@@ -21,7 +21,7 @@ It works by using authenticated website endpoints observed from the MyPolaris po
 ## Features
 
 - Session-cookie authentication for accounts that are easier to keep stable from a browser login.
-- Credentials + CapSolver authentication for automatic login on refresh.
+- Credentials + NopeCHA token API authentication for automatic login and session refresh.
 - A 100-second keepalive for cookie-based sessions to reduce session expiry on the Polaris side.
 - A dedicated `MyPolaris Ultima Accesare` sensor that shows the latest outbound call made to MyPolaris.
 - Multiple Home Assistant config entries, one per MyPolaris email address.
@@ -49,7 +49,9 @@ It works by using authenticated website endpoints observed from the MyPolaris po
 The integration currently supports two authentication modes:
 
 - Browser session cookie: paste the `ASP.NET_SessionId` value copied from your browser.
-- Credentials + CapSolver: provide email, password, and a valid `CAI-...` CapSolver API key.
+- Credentials + NopeCHA: provide email, password, and a NopeCHA key with reCAPTCHA v2 token API access.
+
+NopeCHA browser/free-tier keys that do not include token API access will return HTTP 402 and cannot refresh the MyPolaris ASP.NET session automatically.
 
 If the Polaris session expires, open the integration Options dialog and paste a fresh `ASP.NET_SessionId` cookie.
 

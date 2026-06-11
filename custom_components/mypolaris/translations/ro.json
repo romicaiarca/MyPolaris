@@ -5,17 +5,17 @@
         "title": "MyPolaris.ro",
         "description": "Alege metoda de autentificare pentru MyPolaris.",
         "menu_options": {
-          "credentials": "Email, parola si cheia API CapSolver",
+          "credentials": "Email, parola si cheia API token NopeCHA",
           "session_cookie": "Cookie de sesiune din browser"
         }
       },
       "credentials": {
         "title": "MyPolaris.ro",
-        "description": "Foloseste aceasta metoda daca vrei ca integrarea sa se autentifice automat la fiecare actualizare. Sunt necesare parola contului MyPolaris si o cheie API CapSolver.",
+        "description": "Foloseste aceasta metoda daca vrei ca integrarea sa se autentifice automat si sa reinnoiasca sesiunea ASP.NET cand este nevoie. Sunt necesare parola contului MyPolaris si o cheie NopeCHA cu acces la API-ul token reCAPTCHA v2.",
         "data": {
           "email": "Email (obligatoriu)",
           "password": "Parola",
-          "api_key": "Cheie API CapSolver",
+          "api_key": "Cheie API token NopeCHA",
           "area_id": "Zona"
         }
       },
@@ -30,7 +30,7 @@
       }
     },
     "error": {
-      "invalid_api_key": "Cheia API trebuie sa inceapa cu 'CAI-' si sa aiba cel putin 30 de caractere.",
+      "invalid_api_key": "Este obligatorie o cheie NopeCHA cu acces la API-ul token reCAPTCHA v2.",
       "invalid_password": "Parola este obligatorie.",
       "invalid_session_cookie": "Cookie-ul ASP.NET_SessionId este obligatoriu.",
       "invalid_auth": "Email sau parola invalide.",
@@ -44,10 +44,10 @@
     "step": {
       "init": {
         "title": "MyPolaris - Setari",
-        "description": "Daca sesiunea MyPolaris expira, lipeste aici un cookie ASP.NET_SessionId nou si salveaza. Daca folosesti autentificarea prin cookie pentru mai multe conturi, obtine fiecare cookie dintr-o fereastra incognito/privata separata sau dintr-un profil separat de browser. Poti lasa neschimbate valorile existente pentru campurile pe care nu vrei sa le modifici.",
+        "description": "Pentru autentificarea cu email, actualizeaza aici cheia API token NopeCHA daca se schimba. Pentru autentificarea cu cookie din browser, lipeste un cookie ASP.NET_SessionId nou daca sesiunea expira. Poti lasa neschimbate valorile existente pentru campurile pe care nu vrei sa le modifici.",
         "data": {
           "update_interval_minutes": "Interval de actualizare (minute)",
-          "api_key": "Cheie API CapSolver",
+          "api_key": "Cheie API token NopeCHA",
           "session_cookie": "Cookie ASP.NET_SessionId nou",
           "area_id": "Zona"
         }

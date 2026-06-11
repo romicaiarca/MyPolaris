@@ -5,17 +5,17 @@
         "title": "MyPolaris.ro",
         "description": "Choose how you want MyPolaris to authenticate.",
         "menu_options": {
-          "credentials": "Email, password and CapSolver API key",
+          "credentials": "Email, password and NopeCHA token API key",
           "session_cookie": "Browser session cookie"
         }
       },
       "credentials": {
         "title": "MyPolaris.ro",
-        "description": "Use this mode if you want the integration to log in automatically on each refresh. It requires your MyPolaris password and a CapSolver API key.",
+        "description": "Use this mode if you want the integration to log in automatically and refresh the ASP.NET session when needed. It requires your MyPolaris password and a NopeCHA key with reCAPTCHA v2 token API access.",
         "data": {
           "email": "Email (required)",
           "password": "Password",
-          "api_key": "CapSolver API Key",
+          "api_key": "NopeCHA token API key",
           "area_id": "Area"
         }
       },
@@ -30,7 +30,7 @@
       }
     },
     "error": {
-      "invalid_api_key": "API key must start with 'CAI-' and be at least 30 characters long.",
+      "invalid_api_key": "A NopeCHA API key with reCAPTCHA v2 token API access is required.",
       "invalid_password": "Password is required.",
       "invalid_session_cookie": "ASP.NET_SessionId cookie is required.",
       "invalid_auth": "Invalid email or password.",
@@ -44,10 +44,10 @@
     "step": {
       "init": {
         "title": "MyPolaris - Settings",
-        "description": "If the MyPolaris session expires, paste a fresh ASP.NET_SessionId cookie here and save. If you use cookie authentication for multiple accounts, collect each cookie from a separate incognito/private window or browser profile. You can keep the existing values for any fields you do not want to change.",
+        "description": "For email login, update the NopeCHA token API key here if it changes. For browser-cookie login, paste a fresh ASP.NET_SessionId cookie if the session expires. You can keep the existing values for any fields you do not want to change.",
         "data": {
           "update_interval_minutes": "Update interval (minutes)",
-          "api_key": "CapSolver API Key",
+          "api_key": "NopeCHA token API key",
           "session_cookie": "New ASP.NET_SessionId cookie",
           "area_id": "Area"
         }

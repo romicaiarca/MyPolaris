@@ -53,7 +53,7 @@ class MyPolarisConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_credentials(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Configure MyPolaris with email/password and CapSolver."""
+        """Configure MyPolaris with email/password and NopeCHA."""
         errors: dict[str, str] = {}
 
         if user_input is not None:
@@ -63,7 +63,7 @@ class MyPolarisConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
             if not password.strip():
                 errors["base"] = "invalid_password"
-            elif not api_key.startswith("CAI-") or len(api_key) < 30:
+            elif not api_key:
                 errors["base"] = "invalid_api_key"
             else:
                 return await self._async_create_entry(
