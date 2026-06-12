@@ -24,6 +24,10 @@ This file captures the current intent behind the MyPolaris custom integration so
 - Keep pure parsing, formatting, and label logic in `custom_components/mypolaris/utils.py` so it can be unit-tested without importing Home Assistant.
 - Keep tests in the repository root `tests/` directory so CI can run them directly.
 - Treat the README at repository root as the HACS-facing user documentation.
+- Keep MyPolaris web sessions isolated per Home Assistant config entry.
+  Do not use Home Assistant's shared aiohttp cookie jar for `my.polaris.ro`,
+  because multiple MyPolaris accounts can overwrite each other's
+  `ASP.NET_SessionId` after restart.
 
 ## Testing strategy
 

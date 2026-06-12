@@ -24,6 +24,9 @@ class _FakeCoordinator:
         self.async_config_entry_first_refresh = AsyncMock()
         self.async_start_keepalive = MagicMock()
         self.async_stop_keepalive = MagicMock()
+        self.async_unload = AsyncMock()
+        self.session = MagicMock()
+        self.session.close = AsyncMock()
 
 
 async def test_async_setup_entry_registers_coordinator_and_devices(hass) -> None:
@@ -43,7 +46,7 @@ async def test_async_setup_entry_registers_coordinator_and_devices(hass) -> None
         "custom_components.mypolaris.MyPolarisCoordinator",
         return_value=fake_coordinator,
     ), patch(
-        "custom_components.mypolaris.async_get_clientsession",
+        "custom_components.mypolaris.async_create_clientsession",
         return_value=object(),
     ):
         result = await integration.async_setup_entry(hass, entry)
@@ -71,7 +74,8 @@ async def test_async_unload_entry_unloads_platforms_and_clears_data(hass) -> Non
         data={CONF_EMAIL: "user@example.com"},
     )
     entry.add_to_hass(hass)
-    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = object()
+    fake_coordinator = _FakeCoordinator()
+    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = fake_coordinator
     hass.config_entries.async_unload_platforms = AsyncMock(return_value=True)
 
     result = await integration.async_unload_entry(hass, entry)
@@ -81,4 +85,6 @@ async def test_async_unload_entry_unloads_platforms_and_clears_data(hass) -> Non
         entry,
         PLATFORMS,
     )
+    fake_coordinator.async_unload.assert_awaited_once_with()
+    fake_coordinator.session.close.assert_awaited_once_with()
     assert entry.entry_id not in hass.data[DOMAIN]
