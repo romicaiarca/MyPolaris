@@ -80,6 +80,28 @@ async def test_credentials_step_rejects_invalid_api_key(hass) -> None:
     assert result["errors"] == {"base": "invalid_api_key"}
 
 
+async def test_credentials_step_accepts_cap_api_key(hass) -> None:
+    form = await _select_auth_step(hass, AUTH_METHOD_CREDENTIALS)
+
+    result = await hass.config_entries.flow.async_configure(
+        form["flow_id"],
+        {
+            CONF_EMAIL: "user@example.com",
+            CONF_PASSWORD: "secret",
+            CONF_API_KEY: "CAP-" + "x" * 32,
+        },
+    )
+
+    assert result["type"] == FlowResultType.CREATE_ENTRY
+    assert result["title"] == "MyPolaris - user@example.com"
+    assert result["data"] == {
+        CONF_EMAIL: "user@example.com",
+        CONF_AUTH_METHOD: AUTH_METHOD_CREDENTIALS,
+        CONF_PASSWORD: "secret",
+        CONF_API_KEY: "CAP-" + "x" * 32,
+    }
+
+
 async def test_session_cookie_step_creates_entry(hass) -> None:
     form = await _select_auth_step(hass, AUTH_METHOD_SESSION_COOKIE)
 

@@ -11,11 +11,12 @@
       },
       "credentials": {
         "title": "MyPolaris.ro",
-        "description": "Use this mode if you want the integration to log in automatically on each refresh. It requires your MyPolaris password and a CapSolver API key.",
+        "description": "Use this mode if you want the integration to log in automatically and refresh the ASP.NET session when needed. It requires your MyPolaris password and a CapSolver API key. If proxyless CapSolver tokens are rejected, add an HTTP proxy so CapSolver and MyPolaris use the same IP.",
         "data": {
           "email": "Email (required)",
           "password": "Password",
           "api_key": "CapSolver API Key",
+          "capsolver_proxy": "HTTP proxy URL (optional)",
           "area_id": "Area"
         }
       },
@@ -30,7 +31,8 @@
       }
     },
     "error": {
-      "invalid_api_key": "API key must start with 'CAI-' and be at least 30 characters long.",
+      "invalid_api_key": "API key must start with 'CAI-' or 'CAP-' and be at least 30 characters long.",
+      "invalid_proxy": "Proxy URL must look like http://host:port or http://user:pass@host:port.",
       "invalid_password": "Password is required.",
       "invalid_session_cookie": "ASP.NET_SessionId cookie is required.",
       "invalid_auth": "Invalid email or password.",
@@ -44,10 +46,11 @@
     "step": {
       "init": {
         "title": "MyPolaris - Settings",
-        "description": "If the MyPolaris session expires, paste a fresh ASP.NET_SessionId cookie here and save. If you use cookie authentication for multiple accounts, collect each cookie from a separate incognito/private window or browser profile. You can keep the existing values for any fields you do not want to change.",
+        "description": "For email login, update the CapSolver API key or optional HTTP proxy here. For browser-cookie login, paste a fresh ASP.NET_SessionId cookie if the session expires. You can keep the existing values for any fields you do not want to change.",
         "data": {
           "update_interval_minutes": "Update interval (minutes)",
           "api_key": "CapSolver API Key",
+          "capsolver_proxy": "HTTP proxy URL (optional)",
           "session_cookie": "New ASP.NET_SessionId cookie",
           "area_id": "Area"
         }

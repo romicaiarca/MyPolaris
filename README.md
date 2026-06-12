@@ -21,7 +21,7 @@ It works by using authenticated website endpoints observed from the MyPolaris po
 ## Features
 
 - Session-cookie authentication for accounts that are easier to keep stable from a browser login.
-- Credentials + CapSolver authentication for automatic login on refresh.
+- Credentials + CapSolver authentication for automatic login and session refresh.
 - A 100-second keepalive for cookie-based sessions to reduce session expiry on the Polaris side.
 - A dedicated `MyPolaris Ultima Accesare` sensor that shows the latest outbound call made to MyPolaris.
 - Multiple Home Assistant config entries, one per MyPolaris email address.
@@ -49,9 +49,9 @@ It works by using authenticated website endpoints observed from the MyPolaris po
 The integration currently supports two authentication modes:
 
 - Browser session cookie: paste the `ASP.NET_SessionId` value copied from your browser.
-- Credentials + CapSolver: provide email, password, and a valid `CAI-...` CapSolver API key.
+- Credentials + CapSolver: provide email, password, and a valid `CAI-...` or `CAP-...` CapSolver API key. This flow solves the MyPolaris reCAPTCHA v3 token with CapSolver and reuses the ASP.NET session until it expires. If proxyless v3 tokens are rejected, configure an optional HTTP proxy URL such as `http://user:pass@host:port`; the integration will use CapSolver's proxy task type and route MyPolaris requests through the same proxy so Google sees a matching IP.
 
-If the Polaris session expires, open the integration Options dialog and paste a fresh `ASP.NET_SessionId` cookie.
+For browser session-cookie authentication, if the Polaris session expires, open the integration Options dialog and paste a fresh `ASP.NET_SessionId` cookie. Credential authentication will try to refresh the ASP.NET session automatically with CapSolver.
 
 If you use browser-session cookies for multiple MyPolaris accounts, obtain each cookie from a separate incognito/private window or a separate browser profile. In testing, MyPolaris appears to bind the session to the current browser/device profile, so signing in with a different account in the same normal browser profile can replace the previous cookie.
 
