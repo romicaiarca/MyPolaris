@@ -9,6 +9,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from custom_components.mypolaris.const import DOMAIN
 from custom_components.mypolaris import sensor as sensor_platform
 from custom_components.mypolaris.sensor import (
+    MyPolarisArhivaFacturiSensor,
     MyPolarisCapsolverCallsSensor,
     MyPolarisLastAccessSensor,
 )
@@ -72,6 +73,35 @@ def test_capsolver_calls_sensor_counts_since_restart() -> None:
         "reset": "restart integrare",
         "tip_task": "ReCaptchaV3TaskProxyLess",
     }
+
+
+def test_archive_sensor_name_uses_pdl_id_and_owner() -> None:
+    coordinator = _FakeCoordinator(
+        {
+            "locatii": [
+                {
+                    "id": "304505",
+                    "denumire": "Pdl. SEDIUL SOCIAL Jud. Vrancea Loc. FOCSANI (Iarca Romica)",
+                },
+            ],
+            "by_locatie": {
+                "304505": {"years": [2025]},
+            },
+        }
+    )
+
+    sensor = MyPolarisArhivaFacturiSensor(
+        coordinator,
+        "entry-1",
+        coordinator.data["locatii"][0],
+        2025,
+    )
+
+    assert sensor.name == "2025 → Arhivă facturi — PdL 304505 (Iarca Romica)"
+    assert sensor.entity_id == (
+        "sensor.mypolaris_pdl_sediul_social_jud_vrancea_loc_focsani_iarca_romica_"
+        "arhiva_facturi_2025"
+    )
 
 
 def test_last_access_sensor_exposes_localized_attributes() -> None:

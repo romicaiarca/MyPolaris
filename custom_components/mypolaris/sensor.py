@@ -105,6 +105,19 @@ async def async_setup_entry(
     entry.async_on_unload(coordinator.async_add_listener(_add_dynamic_sensors))
 
 
+def _pdl_display_label(loc: dict[str, str]) -> str:
+    """Return a compact display label for one MyPolaris location."""
+    label = f"PdL {loc['id']}"
+    denumire = loc.get("denumire") or ""
+    start = denumire.rfind("(")
+    end = denumire.rfind(")")
+    if 0 <= start < end:
+        owner = denumire[start + 1:end].strip()
+        if owner:
+            label = f"{label} ({owner})"
+    return label
+
+
 def _device_info(
     coordinator: MyPolarisCoordinator,
     entry_id: str,
@@ -240,7 +253,8 @@ class _MyPolarisBase(CoordinatorEntity, SensorEntity):
         self._key = key
         self._locatie_id = loc["id"]
         self._locatie_denumire = loc.get("denumire") or loc["id"]
-        self._attr_name = f"{name} — {self._locatie_denumire}"
+        self._locatie_display_label = _pdl_display_label(loc)
+        self._attr_name = f"{name} — {self._locatie_display_label}"
         self._attr_unique_id = f"{coordinator.email}_{loc['id']}_{key}"
         self.entity_id = f"sensor.mypolaris_{slug_for_entity_id(self._locatie_denumire)}_{key}"
         if icon:
