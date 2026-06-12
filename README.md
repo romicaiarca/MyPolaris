@@ -171,7 +171,7 @@ The extra test dependencies are development-only. HACS still installs only the i
 You can run the repository test suite with:
 
 ```bash
-python3 -m pip install -r requirements_test.txt
+python3 -m pip install pytest-homeassistant-custom-component
 pytest -q tests
 ```
 

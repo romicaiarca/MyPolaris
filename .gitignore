@@ -54,6 +54,10 @@ Thumbs.db
 .env.*
 !.env.example
 
+# Local dependency scratch files
+requirements_test.txt
+requirements_test_all.txt
+
 # Local Home Assistant/dev output
 homeassistant/.vscode/
 homeassistant/.mypy_cache/
