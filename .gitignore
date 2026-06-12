@@ -1,8 +1,67 @@
+# Python bytecode
 __pycache__/
-.pytest_cache/
-.ruff_cache/
+*.py[cod]
+*$py.class
+
+# Python packaging/build output
+.Python
+build/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+*.egg-info/
+*.egg
+MANIFEST
+
+# Virtual environments
 .venv/
-*.pyc
-*.pyo
+venv/
+env/
+ENV/
+
+# Test/type/lint caches and reports
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.nox/
+.coverage
+.coverage.*
+coverage.xml
+coverage.json
+htmlcov/
+
+# Editor and OS-local files
+.vscode/
+.idea/
+*.code-workspace
 *.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Logs and local env files
 *.log
+.env
+.env.*
+!.env.example
+
+# Local Home Assistant/dev output
+homeassistant/.vscode/
+homeassistant/.mypy_cache/
+homeassistant/.pytest_cache/
+homeassistant/.ruff_cache/
+homeassistant/.venv/
+homeassistant/coverage.xml
+homeassistant/coverage.json
+homeassistant/coverage/
+homeassistant/instance/
+homeassistant/requirements_test_all.txt
