@@ -31,6 +31,13 @@ This file captures the current intent behind the MyPolaris custom integration so
 - Add targeted `pytest-homeassistant-custom-component` tests for config flow, coordinator timing, and entity behavior without changing the HACS runtime package.
 - Keep CI lightweight enough to run in a normal GitHub pipeline without needing the live Home Assistant config directory.
 
+## Release checklist
+
+- Before creating a release tag, update `custom_components/mypolaris/manifest.json` so the `version` value matches the release tag, for example `2026.6.3`.
+- Use plain year.month.patch tags without a `v` prefix.
+- Create the GitHub Release for the pushed tag; HACS may continue showing the previous version until the GitHub Release exists and HACS refreshes repository metadata.
+- After updating the live Home Assistant copy, restart Home Assistant if the integration page still shows the previous manifest version.
+
 ## Near-term priorities
 
 - Preserve HACS-compatible repository structure.
