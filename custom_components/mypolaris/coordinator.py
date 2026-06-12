@@ -12,7 +12,6 @@ import aiohttp
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-from yarl import URL
 
 from .utils import (
     build_cookie_header,
@@ -503,13 +502,6 @@ class MyPolarisCoordinator(DataUpdateCoordinator):
             cookie_parts.extend(
                 f"{name}={value}" for name, value in self._session_cookies.items()
             )
-            try:
-                jar_cookies = self.session.cookie_jar.filter_cookies(URL(BASE_URL))
-                cookie_parts.extend(
-                    f"{name}={morsel.value}" for name, morsel in jar_cookies.items()
-                )
-            except Exception as err:  # pragma: no cover - defensive around HA sessions
-                _LOGGER.debug("Could not read MyPolaris session cookies: %s", err)
         if self.session_cookie:
             cookie_parts.append(build_cookie_header(self.session_cookie))
         if extra_cookies:

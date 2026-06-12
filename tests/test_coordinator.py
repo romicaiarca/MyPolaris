@@ -136,6 +136,17 @@ def test_record_last_access_updates_state_and_listeners(hass) -> None:
     listener.assert_called_once_with()
 
 
+def test_cookie_header_ignores_shared_session_cookie_jar() -> None:
+    session = MagicMock()
+    coordinator = object.__new__(MyPolarisCoordinator)
+    coordinator.session = session
+    coordinator.session_cookie = ""
+    coordinator._session_cookies = {"ASP.NET_SessionId": "entry-cookie"}
+
+    assert coordinator._cookie_header() == "ASP.NET_SessionId=entry-cookie"
+    session.cookie_jar.filter_cookies.assert_not_called()
+
+
 class _FakeCapsolverResponse:
     def __init__(self, data: dict, status: int = 200) -> None:
         self._data = data
