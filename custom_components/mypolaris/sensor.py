@@ -13,6 +13,7 @@ from homeassistant.components.sensor import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -23,7 +24,7 @@ from .utils import (
     slug_for_entity_id,
     sort_by_dmy as _sort_by_dmy,
 )
-from .const import DOMAIN
+from .const import DOMAIN, INTEGRATION_AUTHOR
 from .coordinator import MyPolarisCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -54,7 +55,11 @@ async def async_setup_entry(
     # (locatie_id, year) pairs already materialised
     known_year_pairs: set[tuple[str, int]] = set()
 
-    initial: list[SensorEntity] = [MyPolarisLastAccessSensor(coordinator, entry.entry_id)]
+    initial: list[SensorEntity] = [
+        MyPolarisLastAccessSensor(coordinator, entry.entry_id),
+        MyPolarisCapsolverCallsSensor(coordinator, entry.entry_id),
+        MyPolarisCapsolverBalanceSensor(coordinator, entry.entry_id),
+    ]
     for loc in _locatii():
         known_locatii.add(loc["id"])
         initial.extend(_build_static_for(loc))
@@ -101,6 +106,19 @@ async def async_setup_entry(
     entry.async_on_unload(coordinator.async_add_listener(_add_dynamic_sensors))
 
 
+def _pdl_display_label(loc: dict[str, str]) -> str:
+    """Return a compact display label for one MyPolaris location."""
+    label = f"PdL {loc['id']}"
+    denumire = loc.get("denumire") or ""
+    start = denumire.rfind("(")
+    end = denumire.rfind(")")
+    if 0 <= start < end:
+        owner = denumire[start + 1:end].strip()
+        if owner:
+            label = f"{label} ({owner})"
+    return label
+
+
 def _device_info(
     coordinator: MyPolarisCoordinator,
     entry_id: str,
@@ -108,7 +126,7 @@ def _device_info(
 ) -> DeviceInfo:
     return DeviceInfo(
         identifiers={(DOMAIN, f"{entry_id}_{loc['id']}")},
-        manufacturer="Polaris",
+        manufacturer=INTEGRATION_AUTHOR,
         name=f"MyPolaris — {loc.get('denumire') or loc['id']}",
         model=f"PdL {loc['id']}",
         configuration_url="https://my.polaris.ro",
@@ -119,6 +137,7 @@ class MyPolarisLastAccessSensor(SensorEntity):
     """Timestamp sensor for the most recent MyPolaris endpoint call."""
 
     _attr_has_entity_name = False
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
     _attr_device_class = SensorDeviceClass.TIMESTAMP
     _attr_name = "MyPolaris Ultima Accesare"
     _attr_icon = "mdi:web-clock"
@@ -135,7 +154,7 @@ class MyPolarisLastAccessSensor(SensorEntity):
         primary = locatii[0] if locatii else {"id": "primary", "denumire": coordinator.email}
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, f"{entry_id}_{primary['id']}")},
-            manufacturer="Polaris",
+            manufacturer=INTEGRATION_AUTHOR,
             name=f"MyPolaris — {primary.get('denumire') or primary['id']}",
             configuration_url="https://my.polaris.ro",
         )
@@ -173,6 +192,112 @@ class MyPolarisLastAccessSensor(SensorEntity):
         return attrs
 
 
+class MyPolarisCapsolverCallsSensor(SensorEntity):
+    """Diagnostic counter for CapSolver solve attempts since integration load."""
+
+    _attr_has_entity_name = False
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_icon = "mdi:counter"
+    _attr_name = "MyPolaris CapSolver Apeluri de la Restart"
+    _attr_native_unit_of_measurement = "apeluri"
+    _attr_state_class = SensorStateClass.TOTAL
+
+    def __init__(self, coordinator: MyPolarisCoordinator, entry_id: str) -> None:
+        self.coordinator = coordinator
+        self._attr_unique_id = f"{coordinator.email}_capsolver_calls_since_restart"
+        self.entity_id = (
+            f"sensor.mypolaris_{slug_for_entity_id(coordinator.email)}_"
+            "capsolver_calls_since_restart"
+        )
+
+        data = coordinator.data or {}
+        locatii = data.get("locatii") or []
+        primary = locatii[0] if locatii else {"id": "primary", "denumire": coordinator.email}
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, f"{entry_id}_{primary['id']}")},
+            manufacturer=INTEGRATION_AUTHOR,
+            name=f"MyPolaris — {primary.get('denumire') or primary['id']}",
+            configuration_url="https://my.polaris.ro",
+        )
+
+    async def async_added_to_hass(self) -> None:
+        self.async_on_remove(
+            self.coordinator.async_add_capsolver_listener(self.async_write_ha_state)
+        )
+
+    @property
+    def native_value(self) -> int:
+        return self.coordinator.capsolver_calls_since_start
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        return {
+            "reset": "restart integrare",
+            "tip_task": "ReCaptchaV3TaskProxyLess",
+        }
+
+
+class MyPolarisCapsolverBalanceSensor(SensorEntity):
+    """Diagnostic sensor for the latest known CapSolver account balance."""
+
+    _attr_has_entity_name = False
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_device_class = SensorDeviceClass.MONETARY
+    _attr_icon = "mdi:credit-card-check-outline"
+    _attr_name = "MyPolaris CapSolver Credit Rămas"
+    _attr_native_unit_of_measurement = "USD"
+    _attr_suggested_display_precision = 4
+
+    def __init__(self, coordinator: MyPolarisCoordinator, entry_id: str) -> None:
+        self.coordinator = coordinator
+        self._attr_unique_id = f"{coordinator.email}_capsolver_balance"
+        self.entity_id = (
+            f"sensor.mypolaris_{slug_for_entity_id(coordinator.email)}_"
+            "capsolver_balance"
+        )
+
+        data = coordinator.data or {}
+        locatii = data.get("locatii") or []
+        primary = locatii[0] if locatii else {"id": "primary", "denumire": coordinator.email}
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, f"{entry_id}_{primary['id']}")},
+            manufacturer=INTEGRATION_AUTHOR,
+            name=f"MyPolaris — {primary.get('denumire') or primary['id']}",
+            configuration_url="https://my.polaris.ro",
+        )
+
+    async def async_added_to_hass(self) -> None:
+        self.async_on_remove(
+            self.coordinator.async_add_capsolver_balance_listener(
+                self.async_write_ha_state
+            )
+        )
+
+    @property
+    def available(self) -> bool:
+        return (
+            self.coordinator.capsolver_balance is not None
+            or self.coordinator.capsolver_balance_error is not None
+        )
+
+    @property
+    def native_value(self) -> float | None:
+        return self.coordinator.capsolver_balance
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        attrs: dict[str, Any] = {
+            "actualizare": "la 1 minut dupa apel CapSolver",
+        }
+        if self.coordinator.capsolver_balance_last_update is not None:
+            attrs["ultima_actualizare"] = (
+                self.coordinator.capsolver_balance_last_update.isoformat()
+            )
+        if self.coordinator.capsolver_balance_error:
+            attrs["eroare"] = self.coordinator.capsolver_balance_error
+        return attrs
+
+
 class _MyPolarisBase(CoordinatorEntity, SensorEntity):
     """Common base for MyPolaris sensors (one instance per location)."""
 
@@ -191,7 +316,8 @@ class _MyPolarisBase(CoordinatorEntity, SensorEntity):
         self._key = key
         self._locatie_id = loc["id"]
         self._locatie_denumire = loc.get("denumire") or loc["id"]
-        self._attr_name = f"{name} — {self._locatie_denumire}"
+        self._locatie_display_label = _pdl_display_label(loc)
+        self._attr_name = f"{name} — {self._locatie_display_label}"
         self._attr_unique_id = f"{coordinator.email}_{loc['id']}_{key}"
         self.entity_id = f"sensor.mypolaris_{slug_for_entity_id(self._locatie_denumire)}_{key}"
         if icon:
@@ -213,6 +339,8 @@ class _MyPolarisBase(CoordinatorEntity, SensorEntity):
 
 
 class MyPolarisContractSensor(_MyPolarisBase):
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
     def __init__(self, coordinator, entry_id, loc):
         super().__init__(coordinator, entry_id, loc, "contract",
                          "MyPolaris Contract", "mdi:file-document-outline")
@@ -294,6 +422,7 @@ class MyPolarisFacturiNeplatiteTotalSensor(_MyPolarisBase):
 
 
 class MyPolarisLastUpdateSensor(_MyPolarisBase):
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
     _attr_device_class = SensorDeviceClass.TIMESTAMP
 
     def __init__(self, coordinator, entry_id, loc):

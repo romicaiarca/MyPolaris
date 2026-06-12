@@ -21,9 +21,9 @@ It works by using authenticated website endpoints observed from the MyPolaris po
 ## Features
 
 - Session-cookie authentication for accounts that are easier to keep stable from a browser login.
-- Credentials + CapSolver authentication for automatic login on refresh.
-- A 100-second keepalive for cookie-based sessions to reduce session expiry on the Polaris side.
-- A dedicated `MyPolaris Ultima Accesare` sensor that shows the latest outbound call made to MyPolaris.
+- Credentials + CapSolver authentication for automatic login and session refresh.
+- A 6-hour default polling interval, plus a 100-second keepalive for authenticated sessions when the polling interval is longer than that.
+- Dedicated diagnostic sensors for the latest outbound MyPolaris call, CapSolver solve attempts, and remaining CapSolver credit.
 - Multiple Home Assistant config entries, one per MyPolaris email address.
 - Romanian-first entity naming and labels.
 
@@ -49,9 +49,17 @@ It works by using authenticated website endpoints observed from the MyPolaris po
 The integration currently supports two authentication modes:
 
 - Browser session cookie: paste the `ASP.NET_SessionId` value copied from your browser.
-- Credentials + CapSolver: provide email, password, and a valid `CAI-...` CapSolver API key.
+- Credentials + CapSolver: provide email, password, and a valid `CAI-...` or `CAP-...` CapSolver client key. This flow solves the MyPolaris reCAPTCHA v3 token with CapSolver and reuses the ASP.NET session until it expires.
 
-If the Polaris session expires, open the integration Options dialog and paste a fresh `ASP.NET_SessionId` cookie.
+### CapSolver key and cost
+
+1. Create or sign in to a CapSolver account.
+2. Open the CapSolver dashboard and copy your client key. The integration accepts keys that start with `CAP-` or `CAI-`.
+3. Add $5 credit to the CapSolver account before using email/password login.
+
+MyPolaris email login uses one CapSolver reCAPTCHA v3 solve when it needs a fresh ASP.NET session. CapSolver charges about $0.001 per login request, so $5 covers about 5,000 login solves. With the standard 6-hour polling interval, that is roughly 4 possible login requests per day, or about 1,250 days: 3 years, 5 months, and 5 days.
+
+For browser session-cookie authentication, if the Polaris session expires, open the integration Options dialog and paste a fresh `ASP.NET_SessionId` cookie. Credential authentication will try to refresh the ASP.NET session automatically with CapSolver.
 
 If you use browser-session cookies for multiple MyPolaris accounts, obtain each cookie from a separate incognito/private window or a separate browser profile. In testing, MyPolaris appears to bind the session to the current browser/device profile, so signing in with a different account in the same normal browser profile can replace the previous cookie.
 
@@ -140,6 +148,8 @@ If you do not see the cookie immediately, refresh the MyPolaris page once and ch
 - Connectivity sensor.
 - `MyPolaris Ultima Actualizare` timestamp sensor.
 - `MyPolaris Ultima Accesare` timestamp sensor with endpoint, method, source, and status attributes.
+- `MyPolaris CapSolver Apeluri de la Restart` diagnostic sensor.
+- `MyPolaris CapSolver Credit Rămas` diagnostic sensor.
 
 ## Notes and limitations
 
@@ -162,7 +172,7 @@ The extra test dependencies are development-only. HACS still installs only the i
 You can run the repository test suite with:
 
 ```bash
-python3 -m pip install -r requirements_test.txt
+python3 -m pip install pytest-homeassistant-custom-component
 pytest -q tests
 ```
 

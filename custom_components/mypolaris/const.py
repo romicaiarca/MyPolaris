@@ -4,6 +4,7 @@ from typing import Final
 
 DOMAIN: Final = "mypolaris"
 PLATFORMS: Final = ["sensor", "binary_sensor"]
+INTEGRATION_AUTHOR: Final = "Romica Iarca"
 
 CONF_EMAIL: Final = "email"
 CONF_PASSWORD: Final = "password"
@@ -13,8 +14,8 @@ CONF_SESSION_COOKIE: Final = "session_cookie"
 CONF_LOCATIE_ID: Final = "locatie_id"
 
 # Personal CapSolver client key baked in for single-user installs.
-# Paste your `CAI-...` key between the quotes. Leave empty to require the
+# Paste your `CAI-...` or `CAP-...` key between the quotes. Leave empty to require the
 # user to provide their own in the config flow.
 DEFAULT_API_KEY: Final = ""
 
-DEFAULT_UPDATE_INTERVAL: Final = timedelta(minutes=30)
+DEFAULT_UPDATE_INTERVAL: Final = timedelta(hours=6)

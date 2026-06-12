@@ -23,6 +23,7 @@ from .const import (
     CONF_PASSWORD,
     CONF_SESSION_COOKIE,
     DEFAULT_API_KEY,
+    DEFAULT_UPDATE_INTERVAL,
     DOMAIN,
 )
 
@@ -31,6 +32,13 @@ _LOGGER = logging.getLogger(__name__)
 AUTH_METHOD_CREDENTIALS = "credentials"
 AUTH_METHOD_SESSION_COOKIE = CONF_SESSION_COOKIE
 CONF_AUTH_METHOD = "auth_method"
+CAPSOLVER_API_KEY_PREFIXES = ("CAI-", "CAP-")
+DEFAULT_UPDATE_INTERVAL_MINUTES = int(DEFAULT_UPDATE_INTERVAL.total_seconds() // 60)
+
+
+def _is_valid_capsolver_api_key(api_key: str) -> bool:
+    """Return whether the key looks like a CapSolver client key."""
+    return len(api_key) >= 30 and api_key.startswith(CAPSOLVER_API_KEY_PREFIXES)
 
 
 class MyPolarisConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -63,7 +71,7 @@ class MyPolarisConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
             if not password.strip():
                 errors["base"] = "invalid_password"
-            elif not api_key.startswith("CAI-") or len(api_key) < 30:
+            elif not _is_valid_capsolver_api_key(api_key):
                 errors["base"] = "invalid_api_key"
             else:
                 return await self._async_create_entry(
@@ -190,21 +198,36 @@ class MyPolarisOptionsFlow(config_entries.OptionsFlow):
 
         suggested_values: dict[str, Any] = {
             "update_interval_minutes": self.config_entry.options.get(
-                "update_interval_minutes", 30
+                "update_interval_minutes", DEFAULT_UPDATE_INTERVAL_MINUTES
             )
         }
-        for option_key in (CONF_API_KEY, CONF_SESSION_COOKIE, CONF_AREA_ID):
+        for option_key in (
+            CONF_API_KEY,
+            CONF_SESSION_COOKIE,
+            CONF_AREA_ID,
+        ):
             value = self.config_entry.options.get(
                 option_key, self.config_entry.data.get(option_key)
             )
             if value not in (None, ""):
                 suggested_values[option_key] = value
 
-        options_schema = vol.Schema(
+        return self.async_show_form(
+            step_id="init",
+            data_schema=self.add_suggested_values_to_schema(
+                self._options_schema(),
+                suggested_values,
+            ),
+        )
+
+    @staticmethod
+    def _options_schema() -> vol.Schema:
+        """Return the options form schema."""
+        return vol.Schema(
             {
                 vol.Required(
                     "update_interval_minutes",
-                    default=30,
+                    default=DEFAULT_UPDATE_INTERVAL_MINUTES,
                 ): vol.All(vol.Coerce(int), vol.Range(min=10, max=1440)),
                 vol.Optional(CONF_API_KEY): TextSelector(
                     TextSelectorConfig(type=TextSelectorType.PASSWORD)
@@ -214,12 +237,4 @@ class MyPolarisOptionsFlow(config_entries.OptionsFlow):
                 ),
                 vol.Optional(CONF_AREA_ID): AreaSelector(),
             }
-        )
-
-        return self.async_show_form(
-            step_id="init",
-            data_schema=self.add_suggested_values_to_schema(
-                options_schema,
-                suggested_values,
-            ),
         )

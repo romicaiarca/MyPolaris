@@ -15,7 +15,9 @@ from .const import (
     CONF_EMAIL,
     CONF_PASSWORD,
     CONF_SESSION_COOKIE,
+    DEFAULT_UPDATE_INTERVAL,
     DOMAIN,
+    INTEGRATION_AUTHOR,
     PLATFORMS,
 )
 from .coordinator import MyPolarisCoordinator
@@ -27,8 +29,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up MyPolaris from a config entry."""
     hass.data.setdefault(DOMAIN, {})
 
+    default_interval_minutes = int(DEFAULT_UPDATE_INTERVAL.total_seconds() // 60)
     update_interval = timedelta(
-        minutes=entry.options.get("update_interval_minutes", 30)
+        minutes=entry.options.get("update_interval_minutes", default_interval_minutes)
     )
 
     api_key = entry.options.get(CONF_API_KEY) or entry.data.get(CONF_API_KEY, "")
@@ -57,7 +60,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         device = device_reg.async_get_or_create(
             config_entry_id=entry.entry_id,
             identifiers={(DOMAIN, f"{entry.entry_id}_{loc['id']}")},
-            manufacturer="Polaris",
+            manufacturer=INTEGRATION_AUTHOR,
             name=f"MyPolaris — {loc.get('denumire') or loc['id']}",
             model=f"PdL {loc['id']}",
             configuration_url="https://my.polaris.ro",
