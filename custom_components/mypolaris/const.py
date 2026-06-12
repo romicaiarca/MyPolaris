@@ -4,6 +4,7 @@ from typing import Final
 
 DOMAIN: Final = "mypolaris"
 PLATFORMS: Final = ["sensor", "binary_sensor"]
+INTEGRATION_AUTHOR: Final = "Romica Iarca"
 
 CONF_EMAIL: Final = "email"
 CONF_PASSWORD: Final = "password"

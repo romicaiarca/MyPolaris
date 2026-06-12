@@ -2,7 +2,7 @@ from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN
+from .const import DOMAIN, INTEGRATION_AUTHOR
 
 
 async def async_setup_entry(hass, entry, async_add_entities):
@@ -24,7 +24,7 @@ class MyPolarisOnlineSensor(CoordinatorEntity, BinarySensorEntity):
         primary = locatii[0] if locatii else {"id": "primary", "denumire": coordinator.email}
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, f"{entry_id}_{primary['id']}")},
-            manufacturer="Polaris",
+            manufacturer=INTEGRATION_AUTHOR,
             name=f"MyPolaris — {primary.get('denumire') or primary['id']}",
             configuration_url="https://my.polaris.ro",
         )

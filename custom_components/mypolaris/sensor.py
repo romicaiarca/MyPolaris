@@ -24,7 +24,7 @@ from .utils import (
     slug_for_entity_id,
     sort_by_dmy as _sort_by_dmy,
 )
-from .const import DOMAIN
+from .const import DOMAIN, INTEGRATION_AUTHOR
 from .coordinator import MyPolarisCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -112,7 +112,7 @@ def _device_info(
 ) -> DeviceInfo:
     return DeviceInfo(
         identifiers={(DOMAIN, f"{entry_id}_{loc['id']}")},
-        manufacturer="Polaris",
+        manufacturer=INTEGRATION_AUTHOR,
         name=f"MyPolaris — {loc.get('denumire') or loc['id']}",
         model=f"PdL {loc['id']}",
         configuration_url="https://my.polaris.ro",
@@ -139,7 +139,7 @@ class MyPolarisLastAccessSensor(SensorEntity):
         primary = locatii[0] if locatii else {"id": "primary", "denumire": coordinator.email}
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, f"{entry_id}_{primary['id']}")},
-            manufacturer="Polaris",
+            manufacturer=INTEGRATION_AUTHOR,
             name=f"MyPolaris — {primary.get('denumire') or primary['id']}",
             configuration_url="https://my.polaris.ro",
         )
@@ -200,7 +200,7 @@ class MyPolarisCapsolverCallsSensor(SensorEntity):
         primary = locatii[0] if locatii else {"id": "primary", "denumire": coordinator.email}
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, f"{entry_id}_{primary['id']}")},
-            manufacturer="Polaris",
+            manufacturer=INTEGRATION_AUTHOR,
             name=f"MyPolaris — {primary.get('denumire') or primary['id']}",
             configuration_url="https://my.polaris.ro",
         )

@@ -17,6 +17,7 @@ from .const import (
     CONF_SESSION_COOKIE,
     DEFAULT_UPDATE_INTERVAL,
     DOMAIN,
+    INTEGRATION_AUTHOR,
     PLATFORMS,
 )
 from .coordinator import MyPolarisCoordinator
@@ -59,7 +60,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         device = device_reg.async_get_or_create(
             config_entry_id=entry.entry_id,
             identifiers={(DOMAIN, f"{entry.entry_id}_{loc['id']}")},
-            manufacturer="Polaris",
+            manufacturer=INTEGRATION_AUTHOR,
             name=f"MyPolaris — {loc.get('denumire') or loc['id']}",
             model=f"PdL {loc['id']}",
             configuration_url="https://my.polaris.ro",
