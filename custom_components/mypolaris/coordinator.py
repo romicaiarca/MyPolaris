@@ -500,8 +500,8 @@ class MyPolarisCoordinator(DataUpdateCoordinator):
         auth_user_agent = solution.get("userAgent")
         if not isinstance(auth_user_agent, str) or not auth_user_agent:
             auth_user_agent = USER_AGENT
-        # The browser/client-hint headers are not required for the working
-        # MyPolaris/Postman flow. Avoid sending mismatched platform hints when
+        # Browser/client-hint headers are not required for the working
+        # MyPolaris auth flow. Avoid sending mismatched platform hints when
         # CapSolver returns a user agent from a different OS.
         sec_ch_ua = None
 
