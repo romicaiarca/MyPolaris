@@ -8,7 +8,6 @@ PLATFORMS: Final = ["sensor", "binary_sensor"]
 CONF_EMAIL: Final = "email"
 CONF_PASSWORD: Final = "password"
 CONF_API_KEY: Final = "api_key"
-CONF_CAPSOLVER_PROXY: Final = "capsolver_proxy"
 CONF_AREA_ID: Final = "area_id"
 CONF_SESSION_COOKIE: Final = "session_cookie"
 CONF_LOCATIE_ID: Final = "locatie_id"

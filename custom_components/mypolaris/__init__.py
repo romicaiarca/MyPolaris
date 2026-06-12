@@ -12,7 +12,6 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from .const import (
     CONF_API_KEY,
     CONF_AREA_ID,
-    CONF_CAPSOLVER_PROXY,
     CONF_EMAIL,
     CONF_PASSWORD,
     CONF_SESSION_COOKIE,
@@ -35,9 +34,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
 
     api_key = entry.options.get(CONF_API_KEY) or entry.data.get(CONF_API_KEY, "")
-    capsolver_proxy = entry.options.get(CONF_CAPSOLVER_PROXY) or entry.data.get(
-        CONF_CAPSOLVER_PROXY, ""
-    )
     session_cookie = entry.options.get(CONF_SESSION_COOKIE) or entry.data.get(CONF_SESSION_COOKIE, "")
 
     coordinator = MyPolarisCoordinator(
@@ -48,7 +44,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         update_interval,
         async_get_clientsession(hass),
         session_cookie=session_cookie,
-        capsolver_proxy=capsolver_proxy,
     )
     coordinator.config_entry_id = entry.entry_id
     await coordinator.async_config_entry_first_refresh()

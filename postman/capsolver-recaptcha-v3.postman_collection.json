@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "9df2167b-f28d-4380-a5d5-c91a9a2fbb14",
     "name": "CapSolver reCAPTCHA v3 - MyPolaris",
-    "description": "Postman collection for CapSolver reCAPTCHA v3 createTask/getTaskResult. It includes MyPolaris defaults from Login.aspx and an optional auth POST to test the returned token. Based on https://docs.capsolver.com/en/guide/captcha/ReCaptchaV3/",
+    "description": "Postman collection for the proxyless CapSolver reCAPTCHA v3 createTask/getTaskResult flow used by MyPolaris. It includes MyPolaris defaults from Login.aspx and an optional auth POST to test the returned token. Based on https://docs.capsolver.com/en/guide/captcha/ReCaptchaV3/",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -49,51 +49,7 @@
               "raw": "{\n  \"clientKey\": \"{{capsolver_client_key}}\",\n  \"task\": {\n    \"type\": \"ReCaptchaV3TaskProxyLess\",\n    \"websiteURL\": \"{{capsolver_website_url}}\",\n    \"websiteKey\": \"{{website_key}}\"\n  }\n}"
             },
             "url": "{{capsolver_base_url}}/createTask",
-            "description": "Creates a reCAPTCHA v3 task using CapSolver's built-in proxy."
-          },
-          "response": []
-        },
-        {
-          "name": "createTask - reCAPTCHA v3 with proxy",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const data = pm.response.json();",
-                  "",
-                  "pm.test('HTTP 200', function () {",
-                  "  pm.response.to.have.status(200);",
-                  "});",
-                  "",
-                  "pm.test('CapSolver accepted proxy task', function () {",
-                  "  pm.expect(data.errorId || 0).to.eql(0);",
-                  "  pm.expect(data.taskId, JSON.stringify(data)).to.be.a('string').and.not.empty;",
-                  "});",
-                  "",
-                  "if (data.taskId) {",
-                  "  pm.environment.set('task_id', data.taskId);",
-                  "  console.log('Saved task_id:', data.taskId);",
-                  "}"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"clientKey\": \"{{capsolver_client_key}}\",\n  \"task\": {\n    \"type\": \"ReCaptchaV3Task\",\n    \"websiteURL\": \"{{capsolver_website_url}}\",\n    \"websiteKey\": \"{{website_key}}\",\n    \"proxy\": \"{{capsolver_proxy}}\"\n  }\n}"
-            },
-            "url": "{{capsolver_base_url}}/createTask",
-            "description": "Creates a reCAPTCHA v3 task with your proxy. CapSolver proxy format is like http:host:port:user:pass, not a browser URL."
+            "description": "Creates the same proxyless reCAPTCHA v3 task used by the Home Assistant integration."
           },
           "response": []
         },

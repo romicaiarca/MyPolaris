@@ -12,7 +12,7 @@ This file captures the current intent behind the MyPolaris custom integration so
 
 - Support two authentication modes:
   - Browser session cookie (`ASP.NET_SessionId`)
-  - Email/password with CapSolver reCAPTCHA v3 token solving, optionally through a shared HTTP proxy when proxyless v3 tokens are rejected
+  - Email/password with CapSolver reCAPTCHA v3 token solving
 - Default normal polling to 6 hours; keep authenticated sessions alive with a lightweight request every 100 seconds when the normal polling interval is longer than that.
 - Expose diagnostic sensors for the last outbound access to MyPolaris and CapSolver solve attempts since integration load.
 - Allow multiple Home Assistant config entries, but only one entry per email address.

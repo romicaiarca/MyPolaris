@@ -218,12 +218,7 @@ class MyPolarisCapsolverCallsSensor(SensorEntity):
     def extra_state_attributes(self) -> dict[str, Any]:
         return {
             "reset": "restart integrare",
-            "tip_task": (
-                "ReCaptchaV3Task"
-                if self.coordinator.capsolver_proxy
-                else "ReCaptchaV3TaskProxyLess"
-            ),
-            "proxy": bool(self.coordinator.capsolver_proxy),
+            "tip_task": "ReCaptchaV3TaskProxyLess",
         }
 
 

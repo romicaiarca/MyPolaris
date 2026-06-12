@@ -11,12 +11,11 @@
       },
       "credentials": {
         "title": "MyPolaris.ro",
-        "description": "Foloseste aceasta metoda daca vrei ca integrarea sa se autentifice automat si sa reinnoiasca sesiunea ASP.NET cand este nevoie. Sunt necesare parola contului MyPolaris si o cheie API CapSolver. Daca tokenurile CapSolver fara proxy sunt respinse, adauga un proxy HTTP ca sa foloseasca aceeasi adresa IP CapSolver si MyPolaris.",
+        "description": "Foloseste aceasta metoda daca vrei ca integrarea sa se autentifice automat si sa reinnoiasca sesiunea ASP.NET cand este nevoie. Sunt necesare parola contului MyPolaris si o cheie API CapSolver.",
         "data": {
           "email": "Email (obligatoriu)",
           "password": "Parola",
           "api_key": "Cheie API CapSolver",
-          "capsolver_proxy": "URL proxy HTTP (optional)",
           "area_id": "Zona"
         }
       },
@@ -32,7 +31,6 @@
     },
     "error": {
       "invalid_api_key": "Cheia API trebuie sa inceapa cu 'CAI-' sau 'CAP-' si sa aiba cel putin 30 de caractere.",
-      "invalid_proxy": "URL-ul proxy trebuie sa arate ca http://host:port sau http://user:pass@host:port.",
       "invalid_password": "Parola este obligatorie.",
       "invalid_session_cookie": "Cookie-ul ASP.NET_SessionId este obligatoriu.",
       "invalid_auth": "Email sau parola invalide.",
@@ -46,11 +44,10 @@
     "step": {
       "init": {
         "title": "MyPolaris - Setari",
-        "description": "Pentru autentificarea cu email, actualizeaza aici cheia API CapSolver sau proxy-ul HTTP optional. Pentru autentificarea cu cookie din browser, lipeste un cookie ASP.NET_SessionId nou daca sesiunea expira. Poti lasa neschimbate valorile existente pentru campurile pe care nu vrei sa le modifici.",
+        "description": "Pentru autentificarea cu email, actualizeaza aici cheia API CapSolver daca se schimba. Pentru autentificarea cu cookie din browser, lipeste un cookie ASP.NET_SessionId nou daca sesiunea expira. Poti lasa neschimbate valorile existente pentru campurile pe care nu vrei sa le modifici.",
         "data": {
           "update_interval_minutes": "Interval de actualizare (minute, implicit 360)",
           "api_key": "Cheie API CapSolver",
-          "capsolver_proxy": "URL proxy HTTP (optional)",
           "session_cookie": "Cookie ASP.NET_SessionId nou",
           "area_id": "Zona"
         }

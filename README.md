@@ -49,7 +49,15 @@ It works by using authenticated website endpoints observed from the MyPolaris po
 The integration currently supports two authentication modes:
 
 - Browser session cookie: paste the `ASP.NET_SessionId` value copied from your browser.
-- Credentials + CapSolver: provide email, password, and a valid `CAI-...` or `CAP-...` CapSolver API key. This flow solves the MyPolaris reCAPTCHA v3 token with CapSolver and reuses the ASP.NET session until it expires. If proxyless v3 tokens are rejected, configure an optional HTTP proxy URL such as `http://user:pass@host:port`; the integration will use CapSolver's proxy task type and route MyPolaris requests through the same proxy so Google sees a matching IP.
+- Credentials + CapSolver: provide email, password, and a valid `CAI-...` or `CAP-...` CapSolver client key. This flow solves the MyPolaris reCAPTCHA v3 token with CapSolver and reuses the ASP.NET session until it expires.
+
+### CapSolver key and cost
+
+1. Create or sign in to a CapSolver account.
+2. Open the CapSolver dashboard and copy your client key. The integration accepts keys that start with `CAP-` or `CAI-`.
+3. Add $5 credit to the CapSolver account before using email/password login.
+
+MyPolaris email login uses one CapSolver reCAPTCHA v3 solve when it needs a fresh ASP.NET session. CapSolver charges about $0.001 per login request, so $5 covers about 5,000 login solves. With the standard 6-hour polling interval, that is roughly 4 possible login requests per day, or about 1,250 days: 3 years, 5 months, and 5 days.
 
 For browser session-cookie authentication, if the Polaris session expires, open the integration Options dialog and paste a fresh `ASP.NET_SessionId` cookie. Credential authentication will try to refresh the ASP.NET session automatically with CapSolver.
 
@@ -140,6 +148,7 @@ If you do not see the cookie immediately, refresh the MyPolaris page once and ch
 - Connectivity sensor.
 - `MyPolaris Ultima Actualizare` timestamp sensor.
 - `MyPolaris Ultima Accesare` timestamp sensor with endpoint, method, source, and status attributes.
+- `MyPolaris CapSolver Apeluri de la Restart` diagnostic sensor.
 
 ## Notes and limitations
 

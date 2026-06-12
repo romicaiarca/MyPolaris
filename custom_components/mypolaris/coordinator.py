@@ -7,7 +7,6 @@ import logging
 import re
 from datetime import datetime, timedelta
 from typing import Any, Callable
-from urllib.parse import unquote, urlsplit
 
 import aiohttp
 from homeassistant.core import HomeAssistant, callback
@@ -66,7 +65,6 @@ PAGE_ACTION_PATTERNS = (
     r"grecaptcha\.execute\([^,]+,\s*\{[^}]*action\s*:\s*['\"]([^'\"]+)['\"]",
     r"action\s*:\s*['\"]([^'\"]+)['\"]",
 )
-SUPPORTED_PROXY_SCHEMES = ("http",)
 
 
 class MyPolarisSessionExpired(UpdateFailed):
@@ -95,65 +93,34 @@ def _format_capsolver_error(prefix: str, status: int, data: dict[str, Any]) -> s
     return f"{prefix}: HTTP {status}, response={data!r}"
 
 
-def _capsolver_proxy_from_url(proxy_url: str) -> str | None:
-    """Convert an aiohttp proxy URL into CapSolver's proxy task format."""
-    proxy_url = (proxy_url or "").strip()
-    if not proxy_url:
-        return None
-
-    parsed = urlsplit(proxy_url)
-    try:
-        port = parsed.port
-    except ValueError as err:
-        raise UpdateFailed("CapSolver proxy URL has an invalid port.") from err
-
-    scheme = parsed.scheme.lower()
-    if scheme not in SUPPORTED_PROXY_SCHEMES or not parsed.hostname or port is None:
-        raise UpdateFailed(
-            "CapSolver proxy URL must look like http://host:port or "
-            "http://user:pass@host:port."
-        )
-
-    parts = [scheme, parsed.hostname, str(port)]
-    if parsed.username is not None:
-        parts.append(unquote(parsed.username))
-        parts.append(unquote(parsed.password or ""))
-    return ":".join(parts)
-
-
 async def solve_recaptcha_with_capsolver(
     session: aiohttp.ClientSession,
     api_key: str,
     sitekey: str,
     url: str,
     page_action: str | None,
-    capsolver_proxy: str | None = None,
 ) -> dict[str, Any]:
     """Solve the MyPolaris reCAPTCHA v3 challenge via CapSolver."""
     api_key = (api_key or "").strip()
     if not api_key:
         raise UpdateFailed("CapSolver API key is required.")
 
-    task_type = "ReCaptchaV3Task" if capsolver_proxy else "ReCaptchaV3TaskProxyLess"
     # MyPolaris accepts tokens produced with CapSolver's Google demo URL for
     # this site key. Using the actual Login.aspx URL plus pageAction/isSession
     # caused MyPolaris to reject otherwise successful v3 solves.
     task: dict[str, Any] = {
-        "type": task_type,
+        "type": "ReCaptchaV3TaskProxyLess",
         "websiteURL": CAPSOLVER_RECAPTCHA_URL,
         "websiteKey": sitekey,
     }
-    if capsolver_proxy:
-        task["proxy"] = capsolver_proxy
 
     _LOGGER.debug(
         "Creating CapSolver reCAPTCHA v3 task: type=%s, website_url=%s, "
-        "target_url=%s, sitekey=%s, proxy=%s",
-        task_type,
+        "target_url=%s, sitekey=%s",
+        "ReCaptchaV3TaskProxyLess",
         CAPSOLVER_RECAPTCHA_URL,
         url,
         sitekey,
-        bool(capsolver_proxy),
     )
 
     async with session.post(
@@ -213,14 +180,12 @@ class MyPolarisCoordinator(DataUpdateCoordinator):
         update_interval: timedelta,
         session: aiohttp.ClientSession,
         session_cookie: str = "",
-        capsolver_proxy: str = "",
     ) -> None:
         self.email = email
         self.password = password
         self.api_key = api_key
         self.session = session
         self.session_cookie = (session_cookie or "").strip()
-        self.capsolver_proxy = (capsolver_proxy or "").strip()
         self._session_cookies: dict[str, str] = {}
         self._authenticated = bool(self.session_cookie)
         self.config_entry_id: str | None = None
@@ -378,7 +343,6 @@ class MyPolarisCoordinator(DataUpdateCoordinator):
             json=payload,
             headers=headers,
             allow_redirects=False,
-            proxy=self.capsolver_proxy or None,
         ) as resp:
             text = await resp.text()
             ctype = resp.headers.get("Content-Type", "")
@@ -493,7 +457,6 @@ class MyPolarisCoordinator(DataUpdateCoordinator):
             LOGIN_URL,
             headers=headers,
             allow_redirects=False,
-            proxy=self.capsolver_proxy or None,
         ) as resp:
             login_html = await resp.text()
             self._store_response_cookies(resp)
@@ -532,7 +495,6 @@ class MyPolarisCoordinator(DataUpdateCoordinator):
             sitekey,
             LOGIN_URL,
             page_action,
-            _capsolver_proxy_from_url(self.capsolver_proxy),
         )
         token = solution["gRecaptchaResponse"]
         auth_user_agent = solution.get("userAgent")

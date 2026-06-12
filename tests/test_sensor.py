@@ -29,7 +29,6 @@ class _FakeCoordinator:
         self.last_access_source = "keepalive"
         self.last_access_status = 200
         self.capsolver_calls_since_start = 0
-        self.capsolver_proxy = ""
         self._listeners: list[Callable[[], None]] = []
         self._capsolver_listeners: list[Callable[[], None]] = []
         self._update_listeners: list[Callable[[], None]] = []
@@ -72,7 +71,6 @@ def test_capsolver_calls_sensor_counts_since_restart() -> None:
     assert sensor.extra_state_attributes == {
         "reset": "restart integrare",
         "tip_task": "ReCaptchaV3TaskProxyLess",
-        "proxy": False,
     }
 
 
