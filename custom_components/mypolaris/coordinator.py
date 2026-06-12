@@ -38,7 +38,7 @@ CAPSOLVER_CREATE_TASK_URL = "https://api.capsolver.com/createTask"
 CAPSOLVER_GET_TASK_RESULT_URL = "https://api.capsolver.com/getTaskResult"
 CAPSOLVER_POLL_INTERVAL = 2
 CAPSOLVER_MAX_POLLS = 30
-RECAPTCHA_API_DOMAIN = "www.google.com"
+CAPSOLVER_RECAPTCHA_URL = "https://www.google.com/recaptcha/api2/demo"
 
 USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -135,27 +135,24 @@ async def solve_recaptcha_with_capsolver(
         raise UpdateFailed("CapSolver API key is required.")
 
     task_type = "ReCaptchaV3Task" if capsolver_proxy else "ReCaptchaV3TaskProxyLess"
+    # MyPolaris accepts tokens produced with CapSolver's Google demo URL for
+    # this site key. Using the actual Login.aspx URL plus pageAction/isSession
+    # caused MyPolaris to reject otherwise successful v3 solves.
     task: dict[str, Any] = {
         "type": task_type,
-        "websiteURL": url,
+        "websiteURL": CAPSOLVER_RECAPTCHA_URL,
         "websiteKey": sitekey,
-        "isSession": True,
-        "apiDomain": RECAPTCHA_API_DOMAIN,
     }
     if capsolver_proxy:
         task["proxy"] = capsolver_proxy
-    if page_action:
-        task["pageAction"] = page_action
 
     _LOGGER.debug(
         "Creating CapSolver reCAPTCHA v3 task: type=%s, website_url=%s, "
-        "sitekey=%s, page_action=%s, api_domain=%s, is_session=%s, proxy=%s",
+        "target_url=%s, sitekey=%s, proxy=%s",
         task_type,
+        CAPSOLVER_RECAPTCHA_URL,
         url,
         sitekey,
-        page_action,
-        RECAPTCHA_API_DOMAIN,
-        True,
         bool(capsolver_proxy),
     )
 
@@ -234,6 +231,8 @@ class MyPolarisCoordinator(DataUpdateCoordinator):
         self._last_access_method: str | None = None
         self._last_access_source: str | None = None
         self._last_access_status: int | None = None
+        self._capsolver_calls_since_start = 0
+        self._capsolver_listeners: list[Callable[[], None]] = []
         super().__init__(
             hass, _LOGGER, name="MyPolaris", update_interval=update_interval
         )
@@ -284,6 +283,11 @@ class MyPolarisCoordinator(DataUpdateCoordinator):
         """Return the HTTP status of the last MyPolaris request."""
         return self._last_access_status
 
+    @property
+    def capsolver_calls_since_start(self) -> int:
+        """Return CapSolver solve attempts since this coordinator was created."""
+        return self._capsolver_calls_since_start
+
     @callback
     def async_add_access_listener(
         self, update_callback: Callable[[], None]
@@ -297,6 +301,27 @@ class MyPolarisCoordinator(DataUpdateCoordinator):
                 self._access_listeners.remove(update_callback)
 
         return _remove_listener
+
+    @callback
+    def async_add_capsolver_listener(
+        self, update_callback: Callable[[], None]
+    ) -> Callable[[], None]:
+        """Register a callback for CapSolver counter updates."""
+        self._capsolver_listeners.append(update_callback)
+
+        @callback
+        def _remove_listener() -> None:
+            if update_callback in self._capsolver_listeners:
+                self._capsolver_listeners.remove(update_callback)
+
+        return _remove_listener
+
+    @callback
+    def _record_capsolver_call(self) -> None:
+        """Track one CapSolver solve attempt."""
+        self._capsolver_calls_since_start += 1
+        for listener in tuple(self._capsolver_listeners):
+            listener()
 
     @callback
     def _record_last_access(
@@ -500,6 +525,7 @@ class MyPolarisCoordinator(DataUpdateCoordinator):
             )
         page_action = self._extract_page_action(login_html) or "homepage"
 
+        self._record_capsolver_call()
         solution = await solve_recaptcha_with_capsolver(
             self.session,
             self.api_key,
@@ -512,9 +538,10 @@ class MyPolarisCoordinator(DataUpdateCoordinator):
         auth_user_agent = solution.get("userAgent")
         if not isinstance(auth_user_agent, str) or not auth_user_agent:
             auth_user_agent = USER_AGENT
-        sec_ch_ua = solution.get("secChUa")
-        if not isinstance(sec_ch_ua, str) or not sec_ch_ua:
-            sec_ch_ua = None
+        # The browser/client-hint headers are not required for the working
+        # MyPolaris/Postman flow. Avoid sending mismatched platform hints when
+        # CapSolver returns a user agent from a different OS.
+        sec_ch_ua = None
 
         if auth_user_agent != USER_AGENT or sec_ch_ua:
             await self._async_fetch_login_page(
@@ -528,7 +555,7 @@ class MyPolarisCoordinator(DataUpdateCoordinator):
         }
         _LOGGER.debug(
             "CapSolver reCAPTCHA v3 solution metadata: user_agent=%s, "
-            "sec_ch_ua=%s, recaptcha_session_cookie=%s",
+            "sec_ch_ua_available=%s, recaptcha_session_cookie=%s",
             bool(solution.get("userAgent")),
             bool(solution.get("secChUa")),
             bool(recaptcha_cookies),

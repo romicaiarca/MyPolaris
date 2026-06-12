@@ -16,6 +16,7 @@ from .const import (
     CONF_EMAIL,
     CONF_PASSWORD,
     CONF_SESSION_COOKIE,
+    DEFAULT_UPDATE_INTERVAL,
     DOMAIN,
     PLATFORMS,
 )
@@ -28,8 +29,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up MyPolaris from a config entry."""
     hass.data.setdefault(DOMAIN, {})
 
+    default_interval_minutes = int(DEFAULT_UPDATE_INTERVAL.total_seconds() // 60)
     update_interval = timedelta(
-        minutes=entry.options.get("update_interval_minutes", 30)
+        minutes=entry.options.get("update_interval_minutes", default_interval_minutes)
     )
 
     api_key = entry.options.get(CONF_API_KEY) or entry.data.get(CONF_API_KEY, "")

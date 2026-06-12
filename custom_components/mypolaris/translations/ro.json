@@ -48,7 +48,7 @@
         "title": "MyPolaris - Setari",
         "description": "Pentru autentificarea cu email, actualizeaza aici cheia API CapSolver sau proxy-ul HTTP optional. Pentru autentificarea cu cookie din browser, lipeste un cookie ASP.NET_SessionId nou daca sesiunea expira. Poti lasa neschimbate valorile existente pentru campurile pe care nu vrei sa le modifici.",
         "data": {
-          "update_interval_minutes": "Interval de actualizare (minute)",
+          "update_interval_minutes": "Interval de actualizare (minute, implicit 360)",
           "api_key": "Cheie API CapSolver",
           "capsolver_proxy": "URL proxy HTTP (optional)",
           "session_cookie": "Cookie ASP.NET_SessionId nou",

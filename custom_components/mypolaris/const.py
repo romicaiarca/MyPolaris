@@ -18,4 +18,4 @@ CONF_LOCATIE_ID: Final = "locatie_id"
 # user to provide their own in the config flow.
 DEFAULT_API_KEY: Final = ""
 
-DEFAULT_UPDATE_INTERVAL: Final = timedelta(minutes=30)
+DEFAULT_UPDATE_INTERVAL: Final = timedelta(hours=6)

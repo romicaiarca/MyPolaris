@@ -25,6 +25,7 @@ from .const import (
     CONF_PASSWORD,
     CONF_SESSION_COOKIE,
     DEFAULT_API_KEY,
+    DEFAULT_UPDATE_INTERVAL,
     DOMAIN,
 )
 
@@ -35,6 +36,7 @@ AUTH_METHOD_SESSION_COOKIE = CONF_SESSION_COOKIE
 CONF_AUTH_METHOD = "auth_method"
 CAPSOLVER_API_KEY_PREFIXES = ("CAI-", "CAP-")
 SUPPORTED_PROXY_SCHEMES = ("http",)
+DEFAULT_UPDATE_INTERVAL_MINUTES = int(DEFAULT_UPDATE_INTERVAL.total_seconds() // 60)
 
 
 def _is_valid_capsolver_api_key(api_key: str) -> bool:
@@ -235,7 +237,7 @@ class MyPolarisOptionsFlow(config_entries.OptionsFlow):
 
         suggested_values: dict[str, Any] = {
             "update_interval_minutes": self.config_entry.options.get(
-                "update_interval_minutes", 30
+                "update_interval_minutes", DEFAULT_UPDATE_INTERVAL_MINUTES
             )
         }
         for option_key in (
@@ -265,7 +267,7 @@ class MyPolarisOptionsFlow(config_entries.OptionsFlow):
             {
                 vol.Required(
                     "update_interval_minutes",
-                    default=30,
+                    default=DEFAULT_UPDATE_INTERVAL_MINUTES,
                 ): vol.All(vol.Coerce(int), vol.Range(min=10, max=1440)),
                 vol.Optional(CONF_API_KEY): TextSelector(
                     TextSelectorConfig(type=TextSelectorType.PASSWORD)

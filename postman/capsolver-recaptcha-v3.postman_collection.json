@@ -1,0 +1,254 @@
+{
+  "info": {
+    "_postman_id": "9df2167b-f28d-4380-a5d5-c91a9a2fbb14",
+    "name": "CapSolver reCAPTCHA v3 - MyPolaris",
+    "description": "Postman collection for CapSolver reCAPTCHA v3 createTask/getTaskResult. It includes MyPolaris defaults from Login.aspx and an optional auth POST to test the returned token. Based on https://docs.capsolver.com/en/guide/captcha/ReCaptchaV3/",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "CapSolver",
+      "item": [
+        {
+          "name": "createTask - reCAPTCHA v3 proxyless",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const data = pm.response.json();",
+                  "",
+                  "pm.test('HTTP 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('CapSolver accepted task', function () {",
+                  "  pm.expect(data.errorId || 0).to.eql(0);",
+                  "  pm.expect(data.taskId, JSON.stringify(data)).to.be.a('string').and.not.empty;",
+                  "});",
+                  "",
+                  "if (data.taskId) {",
+                  "  pm.environment.set('task_id', data.taskId);",
+                  "  console.log('Saved task_id:', data.taskId);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clientKey\": \"{{capsolver_client_key}}\",\n  \"task\": {\n    \"type\": \"ReCaptchaV3TaskProxyLess\",\n    \"websiteURL\": \"{{capsolver_website_url}}\",\n    \"websiteKey\": \"{{website_key}}\"\n  }\n}"
+            },
+            "url": "{{capsolver_base_url}}/createTask",
+            "description": "Creates a reCAPTCHA v3 task using CapSolver's built-in proxy."
+          },
+          "response": []
+        },
+        {
+          "name": "createTask - reCAPTCHA v3 with proxy",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const data = pm.response.json();",
+                  "",
+                  "pm.test('HTTP 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('CapSolver accepted proxy task', function () {",
+                  "  pm.expect(data.errorId || 0).to.eql(0);",
+                  "  pm.expect(data.taskId, JSON.stringify(data)).to.be.a('string').and.not.empty;",
+                  "});",
+                  "",
+                  "if (data.taskId) {",
+                  "  pm.environment.set('task_id', data.taskId);",
+                  "  console.log('Saved task_id:', data.taskId);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clientKey\": \"{{capsolver_client_key}}\",\n  \"task\": {\n    \"type\": \"ReCaptchaV3Task\",\n    \"websiteURL\": \"{{capsolver_website_url}}\",\n    \"websiteKey\": \"{{website_key}}\",\n    \"proxy\": \"{{capsolver_proxy}}\"\n  }\n}"
+            },
+            "url": "{{capsolver_base_url}}/createTask",
+            "description": "Creates a reCAPTCHA v3 task with your proxy. CapSolver proxy format is like http:host:port:user:pass, not a browser URL."
+          },
+          "response": []
+        },
+        {
+          "name": "getTaskResult",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const data = pm.response.json();",
+                  "",
+                  "pm.test('HTTP 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('No CapSolver error', function () {",
+                  "  pm.expect(data.errorId || 0).to.eql(0);",
+                  "});",
+                  "",
+                  "if (data.status === 'ready') {",
+                  "  const solution = data.solution || {};",
+                  "  pm.environment.set('g_recaptcha_response', solution.gRecaptchaResponse || '');",
+                  "  pm.environment.set('solution_user_agent', solution.userAgent || pm.environment.get('browser_user_agent') || '');",
+                  "  pm.environment.set('solution_sec_ch_ua', solution.secChUa || '');",
+                  "  pm.environment.set('recaptcha_ca_t', solution['recaptcha-ca-t'] || '');",
+                  "  pm.environment.set('recaptcha_ca_e', solution['recaptcha-ca-e'] || '');",
+                  "  console.log('Solution ready. Saved g_recaptcha_response and metadata variables.');",
+                  "} else {",
+                  "  console.log('Task is not ready yet:', data.status, data);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clientKey\": \"{{capsolver_client_key}}\",\n  \"taskId\": \"{{task_id}}\"\n}"
+            },
+            "url": "{{capsolver_base_url}}/getTaskResult",
+            "description": "Poll this request until status is ready. When ready, tests save g_recaptcha_response, userAgent, secChUa, recaptcha-ca-t, and recaptcha-ca-e into the environment."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Optional MyPolaris Token Test",
+      "item": [
+        {
+          "name": "GET Login.aspx - prime Postman cookie jar",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "User-Agent",
+                "value": "{{browser_user_agent}}"
+              },
+              {
+                "key": "Accept",
+                "value": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "ro-RO,ro;q=0.9,en-US;q=0.8,en;q=0.7"
+              }
+            ],
+            "url": "{{mypolaris_login_url}}",
+            "description": "Optional. Loads Login.aspx so Postman's cookie jar can store any MyPolaris cookies before auth."
+          },
+          "response": []
+        },
+        {
+          "name": "POST Login.aspx/Autentificare",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const data = pm.response.json();",
+                  "console.log('MyPolaris auth response:', data);",
+                  "",
+                  "pm.test('HTTP 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('MyPolaris returned ASP.NET JSON envelope', function () {",
+                  "  pm.expect(data).to.have.property('d');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json; charset=utf-8"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json, text/javascript, */*; q=0.01"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "ro-RO,ro;q=0.9,en-US;q=0.8,en;q=0.7"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest"
+              },
+              {
+                "key": "Origin",
+                "value": "https://my.polaris.ro"
+              },
+              {
+                "key": "Referer",
+                "value": "{{mypolaris_login_url}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{solution_user_agent}}"
+              },
+              {
+                "key": "sec-ch-ua",
+                "value": "{{solution_sec_ch_ua}}",
+                "disabled": true
+              },
+              {
+                "key": "Cookie",
+                "value": "recaptcha-ca-t={{recaptcha_ca_t}}; recaptcha-ca-e={{recaptcha_ca_e}}",
+                "disabled": true
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"Email\": \"{{mypolaris_email}}\",\n  \"Parola\": \"{{mypolaris_password}}\",\n  \"Cod\": \"{{mypolaris_code}}\",\n  \"token\": \"{{g_recaptcha_response}}\"\n}"
+            },
+            "url": "{{mypolaris_auth_url}}",
+            "description": "Optional MyPolaris auth test. First run GET Login.aspx, then create/poll CapSolver, then run this request. Keep credentials only in the Postman environment."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

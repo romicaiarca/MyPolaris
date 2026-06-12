@@ -8,7 +8,10 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.mypolaris.const import DOMAIN
 from custom_components.mypolaris import sensor as sensor_platform
-from custom_components.mypolaris.sensor import MyPolarisLastAccessSensor
+from custom_components.mypolaris.sensor import (
+    MyPolarisCapsolverCallsSensor,
+    MyPolarisLastAccessSensor,
+)
 
 
 class _FakeCoordinator:
@@ -25,7 +28,10 @@ class _FakeCoordinator:
         self.last_access_method = "POST"
         self.last_access_source = "keepalive"
         self.last_access_status = 200
+        self.capsolver_calls_since_start = 0
+        self.capsolver_proxy = ""
         self._listeners: list[Callable[[], None]] = []
+        self._capsolver_listeners: list[Callable[[], None]] = []
         self._update_listeners: list[Callable[[], None]] = []
 
     def async_add_access_listener(self, update_callback: Callable[[], None]):
@@ -37,6 +43,15 @@ class _FakeCoordinator:
 
         return _remove_listener
 
+    def async_add_capsolver_listener(self, update_callback: Callable[[], None]):
+        self._capsolver_listeners.append(update_callback)
+
+        def _remove_listener() -> None:
+            if update_callback in self._capsolver_listeners:
+                self._capsolver_listeners.remove(update_callback)
+
+        return _remove_listener
+
     def async_add_listener(self, update_callback: Callable[[], None]):
         self._update_listeners.append(update_callback)
 
@@ -45,6 +60,20 @@ class _FakeCoordinator:
                 self._update_listeners.remove(update_callback)
 
         return _remove_listener
+
+
+def test_capsolver_calls_sensor_counts_since_restart() -> None:
+    coordinator = _FakeCoordinator()
+    coordinator.capsolver_calls_since_start = 2
+    sensor = MyPolarisCapsolverCallsSensor(coordinator, "entry-1")
+
+    assert sensor.entity_id == "sensor.mypolaris_userexample_com_capsolver_calls_since_restart"
+    assert sensor.native_value == 2
+    assert sensor.extra_state_attributes == {
+        "reset": "restart integrare",
+        "tip_task": "ReCaptchaV3TaskProxyLess",
+        "proxy": False,
+    }
 
 
 def test_last_access_sensor_exposes_localized_attributes() -> None:
@@ -84,7 +113,7 @@ async def test_async_setup_entry_adds_dynamic_location_and_archive_sensors(hass)
     await sensor_platform.async_setup_entry(hass, entry, _async_add_entities)
 
     assert len(added_batches) == 2
-    assert len(added_batches[0][0]) == 7
+    assert len(added_batches[0][0]) == 8
     assert len(added_batches[1][0]) == 2
 
     coordinator.data = {

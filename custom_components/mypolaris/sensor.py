@@ -13,6 +13,7 @@ from homeassistant.components.sensor import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -54,7 +55,10 @@ async def async_setup_entry(
     # (locatie_id, year) pairs already materialised
     known_year_pairs: set[tuple[str, int]] = set()
 
-    initial: list[SensorEntity] = [MyPolarisLastAccessSensor(coordinator, entry.entry_id)]
+    initial: list[SensorEntity] = [
+        MyPolarisLastAccessSensor(coordinator, entry.entry_id),
+        MyPolarisCapsolverCallsSensor(coordinator, entry.entry_id),
+    ]
     for loc in _locatii():
         known_locatii.add(loc["id"])
         initial.extend(_build_static_for(loc))
@@ -171,6 +175,56 @@ class MyPolarisLastAccessSensor(SensorEntity):
         if self.coordinator.last_access_status is not None:
             attrs["status"] = self.coordinator.last_access_status
         return attrs
+
+
+class MyPolarisCapsolverCallsSensor(SensorEntity):
+    """Diagnostic counter for CapSolver solve attempts since integration load."""
+
+    _attr_has_entity_name = False
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_icon = "mdi:counter"
+    _attr_name = "MyPolaris CapSolver Apeluri de la Restart"
+    _attr_native_unit_of_measurement = "apeluri"
+    _attr_state_class = SensorStateClass.TOTAL
+
+    def __init__(self, coordinator: MyPolarisCoordinator, entry_id: str) -> None:
+        self.coordinator = coordinator
+        self._attr_unique_id = f"{coordinator.email}_capsolver_calls_since_restart"
+        self.entity_id = (
+            f"sensor.mypolaris_{slug_for_entity_id(coordinator.email)}_"
+            "capsolver_calls_since_restart"
+        )
+
+        data = coordinator.data or {}
+        locatii = data.get("locatii") or []
+        primary = locatii[0] if locatii else {"id": "primary", "denumire": coordinator.email}
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, f"{entry_id}_{primary['id']}")},
+            manufacturer="Polaris",
+            name=f"MyPolaris — {primary.get('denumire') or primary['id']}",
+            configuration_url="https://my.polaris.ro",
+        )
+
+    async def async_added_to_hass(self) -> None:
+        self.async_on_remove(
+            self.coordinator.async_add_capsolver_listener(self.async_write_ha_state)
+        )
+
+    @property
+    def native_value(self) -> int:
+        return self.coordinator.capsolver_calls_since_start
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        return {
+            "reset": "restart integrare",
+            "tip_task": (
+                "ReCaptchaV3Task"
+                if self.coordinator.capsolver_proxy
+                else "ReCaptchaV3TaskProxyLess"
+            ),
+            "proxy": bool(self.coordinator.capsolver_proxy),
+        }
 
 
 class _MyPolarisBase(CoordinatorEntity, SensorEntity):

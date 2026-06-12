@@ -48,7 +48,7 @@
         "title": "MyPolaris - Settings",
         "description": "For email login, update the CapSolver API key or optional HTTP proxy here. For browser-cookie login, paste a fresh ASP.NET_SessionId cookie if the session expires. You can keep the existing values for any fields you do not want to change.",
         "data": {
-          "update_interval_minutes": "Update interval (minutes)",
+          "update_interval_minutes": "Update interval (minutes, default 360)",
           "api_key": "CapSolver API Key",
           "capsolver_proxy": "HTTP proxy URL (optional)",
           "session_cookie": "New ASP.NET_SessionId cookie",
