@@ -136,6 +136,7 @@ class MyPolarisLastAccessSensor(SensorEntity):
     """Timestamp sensor for the most recent MyPolaris endpoint call."""
 
     _attr_has_entity_name = False
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
     _attr_device_class = SensorDeviceClass.TIMESTAMP
     _attr_name = "MyPolaris Ultima Accesare"
     _attr_icon = "mdi:web-clock"
@@ -276,6 +277,8 @@ class _MyPolarisBase(CoordinatorEntity, SensorEntity):
 
 
 class MyPolarisContractSensor(_MyPolarisBase):
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
     def __init__(self, coordinator, entry_id, loc):
         super().__init__(coordinator, entry_id, loc, "contract",
                          "MyPolaris Contract", "mdi:file-document-outline")
@@ -357,6 +360,7 @@ class MyPolarisFacturiNeplatiteTotalSensor(_MyPolarisBase):
 
 
 class MyPolarisLastUpdateSensor(_MyPolarisBase):
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
     _attr_device_class = SensorDeviceClass.TIMESTAMP
 
     def __init__(self, coordinator, entry_id, loc):

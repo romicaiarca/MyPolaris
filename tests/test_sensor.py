@@ -4,12 +4,16 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Callable
 
+from homeassistant.helpers.entity import EntityCategory
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
+from custom_components.mypolaris.binary_sensor import MyPolarisOnlineSensor
 from custom_components.mypolaris.const import DOMAIN
 from custom_components.mypolaris import sensor as sensor_platform
 from custom_components.mypolaris.sensor import (
     MyPolarisArhivaFacturiSensor,
+    MyPolarisLastUpdateSensor,
+    MyPolarisContractSensor,
     MyPolarisCapsolverCallsSensor,
     MyPolarisLastAccessSensor,
 )
@@ -73,6 +77,32 @@ def test_capsolver_calls_sensor_counts_since_restart() -> None:
         "reset": "restart integrare",
         "tip_task": "ReCaptchaV3TaskProxyLess",
     }
+
+
+def test_metadata_sensors_are_diagnostic() -> None:
+    coordinator = _FakeCoordinator()
+    loc = coordinator.data["locatii"][0]
+
+    assert (
+        MyPolarisLastAccessSensor(coordinator, "entry-1").entity_category
+        == EntityCategory.DIAGNOSTIC
+    )
+    assert (
+        MyPolarisContractSensor(coordinator, "entry-1", loc).entity_category
+        == EntityCategory.DIAGNOSTIC
+    )
+    assert (
+        MyPolarisLastUpdateSensor(coordinator, "entry-1", loc).entity_category
+        == EntityCategory.DIAGNOSTIC
+    )
+    assert (
+        MyPolarisCapsolverCallsSensor(coordinator, "entry-1").entity_category
+        == EntityCategory.DIAGNOSTIC
+    )
+    assert (
+        MyPolarisOnlineSensor(coordinator, "entry-1").entity_category
+        == EntityCategory.DIAGNOSTIC
+    )
 
 
 def test_archive_sensor_name_uses_pdl_id_and_owner() -> None:

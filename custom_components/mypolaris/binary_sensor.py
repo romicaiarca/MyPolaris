@@ -1,5 +1,6 @@
 from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN, INTEGRATION_AUTHOR
@@ -11,6 +12,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
 
 class MyPolarisOnlineSensor(CoordinatorEntity, BinarySensorEntity):
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
     _attr_name = "MyPolaris Online"
     _attr_icon = "mdi:lan-connect"
 
