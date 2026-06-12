@@ -14,6 +14,7 @@ from custom_components.mypolaris.sensor import (
     MyPolarisArhivaFacturiSensor,
     MyPolarisLastUpdateSensor,
     MyPolarisContractSensor,
+    MyPolarisCapsolverBalanceSensor,
     MyPolarisCapsolverCallsSensor,
     MyPolarisLastAccessSensor,
 )
@@ -34,8 +35,12 @@ class _FakeCoordinator:
         self.last_access_source = "keepalive"
         self.last_access_status = 200
         self.capsolver_calls_since_start = 0
+        self.capsolver_balance = 4.999
+        self.capsolver_balance_last_update = datetime(2026, 6, 9, 12, 1, tzinfo=timezone.utc)
+        self.capsolver_balance_error = None
         self._listeners: list[Callable[[], None]] = []
         self._capsolver_listeners: list[Callable[[], None]] = []
+        self._capsolver_balance_listeners: list[Callable[[], None]] = []
         self._update_listeners: list[Callable[[], None]] = []
 
     def async_add_access_listener(self, update_callback: Callable[[], None]):
@@ -53,6 +58,15 @@ class _FakeCoordinator:
         def _remove_listener() -> None:
             if update_callback in self._capsolver_listeners:
                 self._capsolver_listeners.remove(update_callback)
+
+        return _remove_listener
+
+    def async_add_capsolver_balance_listener(self, update_callback: Callable[[], None]):
+        self._capsolver_balance_listeners.append(update_callback)
+
+        def _remove_listener() -> None:
+            if update_callback in self._capsolver_balance_listeners:
+                self._capsolver_balance_listeners.remove(update_callback)
 
         return _remove_listener
 
@@ -79,6 +93,20 @@ def test_capsolver_calls_sensor_counts_since_restart() -> None:
     }
 
 
+def test_capsolver_balance_sensor_exposes_remaining_credit() -> None:
+    coordinator = _FakeCoordinator()
+    sensor = MyPolarisCapsolverBalanceSensor(coordinator, "entry-1")
+
+    assert sensor.entity_category == EntityCategory.DIAGNOSTIC
+    assert sensor.entity_id == "sensor.mypolaris_userexample_com_capsolver_balance"
+    assert sensor.native_value == 4.999
+    assert sensor.native_unit_of_measurement == "USD"
+    assert sensor.extra_state_attributes == {
+        "actualizare": "la 1 minut dupa apel CapSolver",
+        "ultima_actualizare": "2026-06-09T12:01:00+00:00",
+    }
+
+
 def test_metadata_sensors_are_diagnostic() -> None:
     coordinator = _FakeCoordinator()
     loc = coordinator.data["locatii"][0]
@@ -97,6 +125,10 @@ def test_metadata_sensors_are_diagnostic() -> None:
     )
     assert (
         MyPolarisCapsolverCallsSensor(coordinator, "entry-1").entity_category
+        == EntityCategory.DIAGNOSTIC
+    )
+    assert (
+        MyPolarisCapsolverBalanceSensor(coordinator, "entry-1").entity_category
         == EntityCategory.DIAGNOSTIC
     )
     assert (
@@ -171,7 +203,7 @@ async def test_async_setup_entry_adds_dynamic_location_and_archive_sensors(hass)
     await sensor_platform.async_setup_entry(hass, entry, _async_add_entities)
 
     assert len(added_batches) == 2
-    assert len(added_batches[0][0]) == 8
+    assert len(added_batches[0][0]) == 9
     assert len(added_batches[1][0]) == 2
 
     coordinator.data = {

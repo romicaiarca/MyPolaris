@@ -35,8 +35,10 @@ PLATI_URL = f"{BASE_URL}/InvoicesAndPayments.aspx/LoadDataPlati"
 KEEPALIVE_INTERVAL = timedelta(seconds=100)
 CAPSOLVER_CREATE_TASK_URL = "https://api.capsolver.com/createTask"
 CAPSOLVER_GET_TASK_RESULT_URL = "https://api.capsolver.com/getTaskResult"
+CAPSOLVER_GET_BALANCE_URL = "https://api.capsolver.com/getBalance"
 CAPSOLVER_POLL_INTERVAL = 2
 CAPSOLVER_MAX_POLLS = 30
+CAPSOLVER_BALANCE_REFRESH_DELAY = 60
 CAPSOLVER_RECAPTCHA_URL = "https://www.google.com/recaptcha/api2/demo"
 
 USER_AGENT = (
@@ -168,6 +170,34 @@ async def solve_recaptcha_with_capsolver(
     raise UpdateFailed("CapSolver timeout - reCAPTCHA was not solved in time.")
 
 
+async def get_capsolver_balance(
+    session: aiohttp.ClientSession,
+    api_key: str,
+) -> float:
+    """Return the current CapSolver account balance."""
+    api_key = (api_key or "").strip()
+    if not api_key:
+        raise UpdateFailed("CapSolver API key is required.")
+
+    async with session.post(
+        CAPSOLVER_GET_BALANCE_URL,
+        json={"clientKey": api_key},
+    ) as resp:
+        data = await _read_capsolver_json(resp)
+        if resp.status >= 400 or data.get("errorId", 0) != 0:
+            raise UpdateFailed(
+                _format_capsolver_error("CapSolver getBalance failed", resp.status, data)
+            )
+
+    raw_balance = data.get("balance")
+    try:
+        return float(raw_balance)
+    except (TypeError, ValueError) as err:
+        raise UpdateFailed(
+            f"CapSolver getBalance returned an invalid balance: {data!r}"
+        ) from err
+
+
 class MyPolarisCoordinator(DataUpdateCoordinator):
     """Polls my.polaris.ro for contract/balance data."""
 
@@ -198,6 +228,11 @@ class MyPolarisCoordinator(DataUpdateCoordinator):
         self._last_access_status: int | None = None
         self._capsolver_calls_since_start = 0
         self._capsolver_listeners: list[Callable[[], None]] = []
+        self._capsolver_balance: float | None = None
+        self._capsolver_balance_last_update: datetime | None = None
+        self._capsolver_balance_error: str | None = None
+        self._capsolver_balance_tasks: set[asyncio.Task[None]] = set()
+        self._capsolver_balance_listeners: list[Callable[[], None]] = []
         super().__init__(
             hass, _LOGGER, name="MyPolaris", update_interval=update_interval
         )
@@ -222,6 +257,12 @@ class MyPolarisCoordinator(DataUpdateCoordinator):
             return
         self._cancel_keepalive()
         self._cancel_keepalive = None
+
+    def _cancel_capsolver_balance_tasks(self) -> None:
+        """Cancel any delayed CapSolver balance refreshes."""
+        for task in tuple(self._capsolver_balance_tasks):
+            task.cancel()
+        self._capsolver_balance_tasks.clear()
 
     @property
     def last_access_at(self) -> datetime | None:
@@ -253,6 +294,21 @@ class MyPolarisCoordinator(DataUpdateCoordinator):
         """Return CapSolver solve attempts since this coordinator was created."""
         return self._capsolver_calls_since_start
 
+    @property
+    def capsolver_balance(self) -> float | None:
+        """Return the latest known CapSolver account balance."""
+        return self._capsolver_balance
+
+    @property
+    def capsolver_balance_last_update(self) -> datetime | None:
+        """Return when CapSolver balance was last refreshed."""
+        return self._capsolver_balance_last_update
+
+    @property
+    def capsolver_balance_error(self) -> str | None:
+        """Return the latest CapSolver balance refresh error."""
+        return self._capsolver_balance_error
+
     @callback
     def async_add_access_listener(
         self, update_callback: Callable[[], None]
@@ -282,11 +338,66 @@ class MyPolarisCoordinator(DataUpdateCoordinator):
         return _remove_listener
 
     @callback
+    def async_add_capsolver_balance_listener(
+        self, update_callback: Callable[[], None]
+    ) -> Callable[[], None]:
+        """Register a callback for CapSolver balance updates."""
+        self._capsolver_balance_listeners.append(update_callback)
+
+        @callback
+        def _remove_listener() -> None:
+            if update_callback in self._capsolver_balance_listeners:
+                self._capsolver_balance_listeners.remove(update_callback)
+
+        return _remove_listener
+
+    @callback
     def _record_capsolver_call(self) -> None:
         """Track one CapSolver solve attempt."""
         self._capsolver_calls_since_start += 1
         for listener in tuple(self._capsolver_listeners):
             listener()
+        self._schedule_capsolver_balance_refresh()
+
+    @callback
+    def _notify_capsolver_balance_listeners(self) -> None:
+        """Notify listeners that the CapSolver balance state changed."""
+        for listener in tuple(self._capsolver_balance_listeners):
+            listener()
+
+    @callback
+    def _schedule_capsolver_balance_refresh(self) -> None:
+        """Refresh CapSolver balance one minute after a solve attempt."""
+        if not self.api_key.strip():
+            return
+        task = self.hass.loop.create_task(
+            self._async_delayed_capsolver_balance_refresh()
+        )
+        self._capsolver_balance_tasks.add(task)
+        task.add_done_callback(self._capsolver_balance_tasks.discard)
+
+    async def _async_delayed_capsolver_balance_refresh(self) -> None:
+        """Delay the balance call so CapSolver has time to charge the solve."""
+        try:
+            await asyncio.sleep(CAPSOLVER_BALANCE_REFRESH_DELAY)
+            await self._async_refresh_capsolver_balance()
+        except asyncio.CancelledError:
+            raise
+
+    async def _async_refresh_capsolver_balance(self) -> None:
+        """Fetch and publish the latest CapSolver balance."""
+        try:
+            self._capsolver_balance = await get_capsolver_balance(
+                self.session,
+                self.api_key,
+            )
+        except Exception as err:
+            self._capsolver_balance_error = str(err)
+            _LOGGER.warning("Could not refresh CapSolver balance: %s", err)
+        else:
+            self._capsolver_balance_last_update = datetime.now().astimezone()
+            self._capsolver_balance_error = None
+        self._notify_capsolver_balance_listeners()
 
     @callback
     def _record_last_access(
@@ -805,3 +916,4 @@ class MyPolarisCoordinator(DataUpdateCoordinator):
     async def async_unload(self) -> None:
         """Stop coordinator-owned timers."""
         self.async_stop_keepalive()
+        self._cancel_capsolver_balance_tasks()

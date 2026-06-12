@@ -23,7 +23,7 @@ It works by using authenticated website endpoints observed from the MyPolaris po
 - Session-cookie authentication for accounts that are easier to keep stable from a browser login.
 - Credentials + CapSolver authentication for automatic login and session refresh.
 - A 6-hour default polling interval, plus a 100-second keepalive for authenticated sessions when the polling interval is longer than that.
-- Dedicated diagnostic sensors for the latest outbound MyPolaris call and CapSolver solve attempts since the integration was loaded.
+- Dedicated diagnostic sensors for the latest outbound MyPolaris call, CapSolver solve attempts, and remaining CapSolver credit.
 - Multiple Home Assistant config entries, one per MyPolaris email address.
 - Romanian-first entity naming and labels.
 
@@ -149,6 +149,7 @@ If you do not see the cookie immediately, refresh the MyPolaris page once and ch
 - `MyPolaris Ultima Actualizare` timestamp sensor.
 - `MyPolaris Ultima Accesare` timestamp sensor with endpoint, method, source, and status attributes.
 - `MyPolaris CapSolver Apeluri de la Restart` diagnostic sensor.
+- `MyPolaris CapSolver Credit Rămas` diagnostic sensor.
 
 ## Notes and limitations
 

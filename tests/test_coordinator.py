@@ -9,11 +9,13 @@ from custom_components.mypolaris.coordinator import (
     BASE_URL,
     CAPSOLVER_CREATE_TASK_URL,
     CAPSOLVER_GET_TASK_RESULT_URL,
+    CAPSOLVER_GET_BALANCE_URL,
     CAPSOLVER_RECAPTCHA_URL,
     HOME_URL,
     INIT_URL,
     KEEPALIVE_INTERVAL,
     MyPolarisCoordinator,
+    get_capsolver_balance,
     solve_recaptcha_with_capsolver,
 )
 
@@ -165,6 +167,8 @@ class _FakeCapsolverSession:
                     "solution": {"gRecaptchaResponse": "token-1"},
                 }
             )
+        if url == CAPSOLVER_GET_BALANCE_URL:
+            return _FakeCapsolverResponse({"errorId": 0, "balance": 4.999})
         raise AssertionError(f"Unexpected URL: {url}")
 
 
@@ -206,6 +210,23 @@ async def test_capsolver_uses_proxyless_google_demo_payload() -> None:
     ]
 
 
+async def test_capsolver_get_balance_uses_client_key_payload() -> None:
+    session = _FakeCapsolverSession()
+
+    balance = await get_capsolver_balance(
+        session,
+        "CAP-123456789012345678901234567890",
+    )
+
+    assert balance == 4.999
+    assert session.payloads == [
+        (
+            CAPSOLVER_GET_BALANCE_URL,
+            {"clientKey": "CAP-123456789012345678901234567890"},
+        )
+    ]
+
+
 def test_record_capsolver_call_updates_counter_and_listeners(hass) -> None:
     coordinator = MyPolarisCoordinator(
         hass,
@@ -229,3 +250,21 @@ def test_record_capsolver_call_updates_counter_and_listeners(hass) -> None:
 
     assert coordinator.capsolver_calls_since_start == 2
     listener.assert_called_once_with()
+
+
+def test_record_capsolver_call_schedules_balance_refresh(hass) -> None:
+    coordinator = MyPolarisCoordinator(
+        hass,
+        "user@example.com",
+        "",
+        "CAP-123456789012345678901234567890",
+        timedelta(minutes=30),
+        MagicMock(),
+        session_cookie="abc123",
+    )
+
+    with patch.object(coordinator, "_schedule_capsolver_balance_refresh") as mock_schedule:
+        coordinator._record_capsolver_call()
+
+    assert coordinator.capsolver_calls_since_start == 1
+    mock_schedule.assert_called_once_with()

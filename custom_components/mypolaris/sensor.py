@@ -58,6 +58,7 @@ async def async_setup_entry(
     initial: list[SensorEntity] = [
         MyPolarisLastAccessSensor(coordinator, entry.entry_id),
         MyPolarisCapsolverCallsSensor(coordinator, entry.entry_id),
+        MyPolarisCapsolverBalanceSensor(coordinator, entry.entry_id),
     ]
     for loc in _locatii():
         known_locatii.add(loc["id"])
@@ -234,6 +235,67 @@ class MyPolarisCapsolverCallsSensor(SensorEntity):
             "reset": "restart integrare",
             "tip_task": "ReCaptchaV3TaskProxyLess",
         }
+
+
+class MyPolarisCapsolverBalanceSensor(SensorEntity):
+    """Diagnostic sensor for the latest known CapSolver account balance."""
+
+    _attr_has_entity_name = False
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_device_class = SensorDeviceClass.MONETARY
+    _attr_icon = "mdi:credit-card-check-outline"
+    _attr_name = "MyPolaris CapSolver Credit Rămas"
+    _attr_native_unit_of_measurement = "USD"
+    _attr_suggested_display_precision = 4
+
+    def __init__(self, coordinator: MyPolarisCoordinator, entry_id: str) -> None:
+        self.coordinator = coordinator
+        self._attr_unique_id = f"{coordinator.email}_capsolver_balance"
+        self.entity_id = (
+            f"sensor.mypolaris_{slug_for_entity_id(coordinator.email)}_"
+            "capsolver_balance"
+        )
+
+        data = coordinator.data or {}
+        locatii = data.get("locatii") or []
+        primary = locatii[0] if locatii else {"id": "primary", "denumire": coordinator.email}
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, f"{entry_id}_{primary['id']}")},
+            manufacturer=INTEGRATION_AUTHOR,
+            name=f"MyPolaris — {primary.get('denumire') or primary['id']}",
+            configuration_url="https://my.polaris.ro",
+        )
+
+    async def async_added_to_hass(self) -> None:
+        self.async_on_remove(
+            self.coordinator.async_add_capsolver_balance_listener(
+                self.async_write_ha_state
+            )
+        )
+
+    @property
+    def available(self) -> bool:
+        return (
+            self.coordinator.capsolver_balance is not None
+            or self.coordinator.capsolver_balance_error is not None
+        )
+
+    @property
+    def native_value(self) -> float | None:
+        return self.coordinator.capsolver_balance
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        attrs: dict[str, Any] = {
+            "actualizare": "la 1 minut dupa apel CapSolver",
+        }
+        if self.coordinator.capsolver_balance_last_update is not None:
+            attrs["ultima_actualizare"] = (
+                self.coordinator.capsolver_balance_last_update.isoformat()
+            )
+        if self.coordinator.capsolver_balance_error:
+            attrs["eroare"] = self.coordinator.capsolver_balance_error
+        return attrs
 
 
 class _MyPolarisBase(CoordinatorEntity, SensorEntity):
